@@ -1,0 +1,15 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Reglas para la colección de tareas (RNF-03)
+    match /tareas/{documentId} {
+      // Solo permite leer/actualizar/borrar si el usuario está autenticado y es el dueño
+      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.user_id;
+      
+      // Solo permite crear si está autenticado y el user_id que intenta guardar es el suyo
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.user_id;
+    }
+  }
+}
