@@ -44,7 +44,7 @@ const deleteTask = async (task) => {
     try {
       await removeTask(task.id)
     } catch(err) {
-      alert("Error al eliminar la tarea.")
+      alert("Error al eliminar la tarea: " + err.message)
     }
   }
 }
