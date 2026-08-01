@@ -147,7 +147,6 @@ const handleSubmit = () => {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -159,20 +158,24 @@ const handleSubmit = () => {
 .modal-content {
   width: 100%;
   max-width: 500px;
-  background: #1e293b;
-  border-radius: var(--radius-lg);
+  max-height: 90vh;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  overflow: hidden;
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
+  padding: 1.25rem 1.5rem;
   border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
 .modal-header h3 {
@@ -193,6 +196,7 @@ const handleSubmit = () => {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  overflow-y: auto;
 }
 
 .form-group {
@@ -311,4 +315,41 @@ input:checked + .slider:before {
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Mobile Responsiveness */
+@media (max-width: 600px) {
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+  
+  .modal-content {
+    max-height: 85vh;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom: none;
+    border-left: none;
+    border-right: none;
+    animation: slideUpBottomSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+  
+  .form-actions {
+    flex-direction: column-reverse;
+  }
+  
+  .btn-cancel, .btn-primary {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@keyframes slideUpBottomSheet { 
+  from { opacity: 0; transform: translateY(100%); } 
+  to { opacity: 1; transform: translateY(0); } 
+}
 </style>

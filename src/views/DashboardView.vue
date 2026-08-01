@@ -1,17 +1,75 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import TaskCard from '../components/matrix/TaskCard.vue'
 import TaskFormModal from '../components/matrix/TaskFormModal.vue'
 import { useTasks } from '../composables/useTasks'
+import { useFilters } from '../composables/useFilters'
 
 // Extraemos estado y métodos de Firestore
 const { tasks, addTask, updateTask, removeTask, loadingTasks } = useTasks()
+const { filterStatus, filterDateType, filterDateRange, triggerNewTask } = useFilters()
 
-// Agrupamos las tareas lógicamente usando computed properties
-const q1Tasks = computed(() => tasks.value.filter(t => t.es_urgente && t.es_importante))
-const q2Tasks = computed(() => tasks.value.filter(t => !t.es_urgente && t.es_importante))
-const q3Tasks = computed(() => tasks.value.filter(t => t.es_urgente && !t.es_importante))
-const q4Tasks = computed(() => tasks.value.filter(t => !t.es_urgente && !t.es_importante))
+// Escuchar evento de crear tarea desde la barra superior (App.vue)
+watch(triggerNewTask, (val) => {
+  if (val) {
+    openCreateModal()
+    triggerNewTask.value = false
+  }
+})
+
+// --- LÓGICA DE FILTROS ---
+const mobileTab = ref('q1') // Para la navegación móvil
+
+const filteredTasks = computed(() => {
+  return tasks.value.filter(task => {
+    // 1. Filtro por Estado
+    if (filterStatus.value !== 'Todos' && task.estado !== filterStatus.value) {
+      return false
+    }
+
+    // 2. Filtro por Fecha
+    if (filterDateType.value === 'todos') return true
+
+    // Si la tarea no tiene fechas, no entra en los filtros de periodo específicos
+    if (!task.fecha_inicio && !task.fecha_vencimiento) return false
+
+    let startBound, endBound;
+    const now = new Date()
+
+    if (filterDateType.value === 'hoy') {
+      startBound = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      endBound = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+    } else if (filterDateType.value === 'esta-semana') {
+      const day = now.getDay()
+      const diff = now.getDate() - day + (day === 0 ? -6 : 1) // Lunes como inicio
+      startBound = new Date(now.getFullYear(), now.getMonth(), diff)
+      endBound = new Date(startBound)
+      endBound.setDate(startBound.getDate() + 6)
+      endBound.setHours(23, 59, 59)
+    } else if (filterDateType.value === 'este-mes') {
+      startBound = new Date(now.getFullYear(), now.getMonth(), 1)
+      endBound = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+    } else if (filterDateType.value === 'rango') {
+      if (!filterDateRange.value.start || !filterDateRange.value.end) return true
+      startBound = new Date(filterDateRange.value.start + 'T00:00:00')
+      endBound = new Date(filterDateRange.value.end + 'T23:59:59')
+    }
+
+    const tStart = task.fecha_inicio ? new Date(task.fecha_inicio + 'T00:00:00') : null
+    const tEnd = task.fecha_vencimiento ? new Date(task.fecha_vencimiento + 'T00:00:00') : null
+
+    const isStartInRange = tStart && tStart >= startBound && tStart <= endBound
+    const isEndInRange = tEnd && tEnd >= startBound && tEnd <= endBound
+
+    return isStartInRange || isEndInRange
+  })
+})
+
+// Agrupamos las tareas lógicamente usando computed properties sobre la lista filtrada
+const q1Tasks = computed(() => filteredTasks.value.filter(t => t.es_urgente && t.es_importante))
+const q2Tasks = computed(() => filteredTasks.value.filter(t => !t.es_urgente && t.es_importante))
+const q3Tasks = computed(() => filteredTasks.value.filter(t => t.es_urgente && !t.es_importante))
+const q4Tasks = computed(() => filteredTasks.value.filter(t => !t.es_urgente && !t.es_importante))
 
 // --- LÓGICA DEL MODAL ---
 const isModalOpen = ref(false)
@@ -23,7 +81,7 @@ const openCreateModal = () => {
 }
 
 const openEditModal = (task) => {
-  taskToEdit.value = { ...task } // clonamos para evitar reactividad indeseada en edición
+  taskToEdit.value = { ...task }
   isModalOpen.value = true
 }
 
@@ -61,19 +119,17 @@ const toggleTaskStatus = async (task) => {
 
 <template>
   <div class="dashboard-view">
-    <header class="dashboard-header">
-      <div class="header-titles">
-        <h2>Matriz de Eisenhower</h2>
-        <p class="subtitle">Clasifica y domina tu tiempo de forma dinámica.</p>
-      </div>
-      <button class="btn-create" @click="openCreateModal">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-        Nueva Tarea
-      </button>
-    </header>
     
+    <!-- Mobile Navigation Tabs -->
+    <div class="mobile-tabs">
+      <button :class="{ active: mobileTab === 'q1', 'tab-q1': mobileTab === 'q1' }" @click="mobileTab = 'q1'">Hacer</button>
+      <button :class="{ active: mobileTab === 'q2', 'tab-q2': mobileTab === 'q2' }" @click="mobileTab = 'q2'">Decidir</button>
+      <button :class="{ active: mobileTab === 'q3', 'tab-q3': mobileTab === 'q3' }" @click="mobileTab = 'q3'">Delegar</button>
+      <button :class="{ active: mobileTab === 'q4', 'tab-q4': mobileTab === 'q4' }" @click="mobileTab = 'q4'">Eliminar</button>
+    </div>
+
     <div class="matrix-container glass-panel">
-      <div class="matrix-grid">
+      <div class="matrix-grid" :class="'active-tab-' + mobileTab">
         <!-- Q1 -->
         <div class="quadrant q1">
           <div class="quadrant-header">
@@ -133,52 +189,11 @@ const toggleTaskStatus = async (task) => {
 .dashboard-view {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
   height: 100%;
 }
 
-.dashboard-header {
-  padding: 0 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.dashboard-header h2 {
-  font-size: 2rem;
-  color: var(--text-primary);
-}
-
-.subtitle {
-  color: var(--text-secondary);
-  font-size: 1rem;
-  margin-top: 0.25rem;
-}
-
-.btn-create {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--accent-primary);
-  color: white;
-  padding: 0.75rem 1.25rem;
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  transition: var(--transition);
-  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
-}
-
-.btn-create:hover {
-  background: var(--accent-primary-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.6);
-}
-
-.btn-create svg {
-  width: 20px;
-  height: 20px;
-}
-
+/* --- MATRIZ --- */
 .matrix-container {
   flex: 1;
   padding: 1.5rem;
@@ -197,24 +212,29 @@ const toggleTaskStatus = async (task) => {
 }
 
 .quadrant {
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   padding: 1.25rem;
   border: 1px solid var(--border-color);
-  transition: var(--transition);
+  background: var(--bg-surface);
   display: flex;
   flex-direction: column;
   gap: 1rem;
   overflow: hidden;
+  position: relative;
 }
 
 .quadrant-header h3 {
   font-size: 1.25rem;
+  position: relative;
+  z-index: 1;
 }
 
 .quadrant-header p {
   font-size: 0.85rem;
   opacity: 0.8;
   margin-top: 0.25rem;
+  position: relative;
+  z-index: 1;
 }
 
 .task-list {
@@ -224,42 +244,90 @@ const toggleTaskStatus = async (task) => {
   overflow-y: auto;
   flex: 1;
   padding-right: 0.25rem;
+  position: relative;
+  z-index: 1;
 }
 
-/* Custom Scrollbar for task lists */
 .task-list::-webkit-scrollbar { width: 4px; }
 .task-list::-webkit-scrollbar-track { background: transparent; }
 .task-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
 .task-list::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 
-/* Quadrant Styles */
-.q1 { background: var(--q1-bg); border-top: 4px solid var(--q1-color); }
+/* Colores de Cuadrantes */
+.q1 { border-left: 4px solid var(--q1-color); }
 .q1 h3 { color: var(--q1-color); }
 
-.q2 { background: var(--q2-bg); border-top: 4px solid var(--q2-color); }
+.q2 { border-left: 4px solid var(--q2-color); }
 .q2 h3 { color: var(--q2-color); }
 
-.q3 { background: var(--q3-bg); border-top: 4px solid var(--q3-color); }
+.q3 { border-left: 4px solid var(--q3-color); }
 .q3 h3 { color: var(--q3-color); }
 
-.q4 { background: var(--q4-bg); border-top: 4px solid var(--q4-color); }
+.q4 { border-left: 4px solid var(--q4-color); }
 .q4 h3 { color: var(--q4-color); }
 
-/* Responsive adjustments (RNF-04) */
+/* --- MOBILE TABS --- */
+.mobile-tabs {
+  display: none;
+}
+
+/* Responsive */
 @media (max-width: 900px) {
-  .matrix-grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto;
+  .desktop-only { display: none; }
+
+  .mobile-tabs {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    margin-top: 0.5rem;
   }
   
+  .mobile-tabs::-webkit-scrollbar { display: none; }
+  
+  .mobile-tabs button {
+    flex: 1 0 auto;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text-secondary);
+    padding: 0.75rem 1rem;
+    border-radius: 20px;
+    white-space: nowrap;
+    transition: all 0.2s;
+    font-weight: 600;
+  }
+  
+  .mobile-tabs button.active {
+    color: white;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  }
+  
+  .mobile-tabs button.tab-q1 { background: var(--q1-color); border-color: var(--q1-color); }
+  .mobile-tabs button.tab-q2 { background: var(--q2-color); border-color: var(--q2-color); }
+  .mobile-tabs button.tab-q3 { background: var(--q3-color); border-color: var(--q3-color); }
+  .mobile-tabs button.tab-q4 { background: var(--q4-color); border-color: var(--q4-color); }
+
   .matrix-container {
     padding: 1rem;
+    min-height: auto;
+    border: none;
+    background: transparent;
   }
   
-  .dashboard-header {
+  .matrix-grid {
+    display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
   }
+  
+  /* Ocultar todos los cuadrantes por defecto en móvil */
+  .matrix-grid .quadrant {
+    display: none;
+    min-height: 500px;
+  }
+  
+  /* Mostrar solo el cuadrante activo */
+  .matrix-grid.active-tab-q1 .q1 { display: flex; }
+  .matrix-grid.active-tab-q2 .q2 { display: flex; }
+  .matrix-grid.active-tab-q3 .q3 { display: flex; }
+  .matrix-grid.active-tab-q4 .q4 { display: flex; }
 }
 </style>

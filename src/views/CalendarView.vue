@@ -1,0 +1,134 @@
+<script setup>
+import { computed, ref } from 'vue'
+import FullCalendar from '@fullcalendar/vue3'
+import dayGridPlugin from '@fullcalendar/daygrid'
+import interactionPlugin from '@fullcalendar/interaction'
+import { useTasks } from '../composables/useTasks'
+
+const { tasks, updateTask } = useTasks()
+
+// Configuración básica del calendario
+const calendarOptions = ref({
+  plugins: [ dayGridPlugin, interactionPlugin ],
+  initialView: 'dayGridMonth',
+  headerToolbar: {
+    left: 'prev,next today',
+    center: 'title',
+    right: 'dayGridMonth'
+  },
+  editable: true, // Permite mover y redimensionar
+  droppable: true,
+  height: '100%',
+  
+  // Mapeamos nuestras tareas al formato de eventos de FullCalendar
+  events: computed(() => {
+    return tasks.value.map(task => {
+      // Determinar color base a la matriz (usamos valores por defecto si no existen las variables)
+      let bgColor = '#64748b' // Gris oscuro por defecto
+      if (task.es_urgente && task.es_importante) bgColor = '#ef4444' // Q1 Rojo
+      else if (!task.es_urgente && task.es_importante) bgColor = '#f59e0b' // Q2 Naranja
+      else if (task.es_urgente && !task.es_importante) bgColor = '#3b82f6' // Q3 Azul
+      else if (!task.es_urgente && !task.es_importante) bgColor = '#10b981' // Q4 Verde
+
+      // FullCalendar maneja bien las fechas "YYYY-MM-DD" para eventos de día completo
+      return {
+        id: task.id,
+        title: task.titulo,
+        start: task.fecha_inicio || task.fecha_vencimiento,
+        end: task.fecha_vencimiento || task.fecha_inicio,
+        backgroundColor: bgColor,
+        borderColor: bgColor,
+        extendedProps: { ...task } // Guardar toda la data de la tarea
+      }
+    }).filter(e => e.start) // Solo renderizamos eventos que tengan alguna fecha asignada
+  }),
+
+  // Hook que se dispara al arrastrar un evento a otro día
+  eventDrop: async (info) => {
+    const { event } = info
+    const taskId = event.id
+    
+    // Extraemos las nuevas fechas en formato 'YYYY-MM-DD' de FullCalendar
+    const newStart = event.startStr.split('T')[0]
+    // FullCalendar da endStr como el día exclusivo, por lo que es mejor usar lo que viene
+    const newEnd = event.endStr ? event.endStr.split('T')[0] : newStart
+
+    try {
+      // Esto actualizará Firestore y automáticamente tu Google Calendar!
+      await updateTask(taskId, {
+        fecha_inicio: newStart,
+        fecha_vencimiento: newEnd
+      })
+    } catch (e) {
+      console.error("Error al mover la tarea:", e)
+      info.revert() // Revertir visualmente si hubo error en Firestore/Google
+      alert("Hubo un error al sincronizar con tu calendario.")
+    }
+  }
+})
+</script>
+
+<template>
+  <div class="calendar-view glass-panel">
+    <FullCalendar :options="calendarOptions" />
+  </div>
+</template>
+
+<style scoped>
+.calendar-view {
+  height: calc(100vh - 120px);
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Adaptando FullCalendar al Dark Mode de tu app */
+:deep(.fc) {
+  --fc-border-color: rgba(255, 255, 255, 0.1);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: rgba(255, 255, 255, 0.05);
+  --fc-neutral-text-color: var(--text-secondary);
+  --fc-today-bg-color: rgba(139, 92, 246, 0.15);
+}
+
+:deep(.fc-theme-standard td), 
+:deep(.fc-theme-standard th) {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+:deep(.fc .fc-toolbar-title) {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+:deep(.fc .fc-button-primary) {
+  background-color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  text-transform: capitalize;
+}
+
+:deep(.fc .fc-button-primary:not(:disabled):active),
+:deep(.fc .fc-button-primary:not(:disabled):hover) {
+  background-color: var(--accent-primary-hover);
+  border-color: var(--accent-primary-hover);
+}
+
+:deep(.fc-daygrid-day-number) {
+  color: var(--text-secondary);
+  padding: 8px;
+}
+
+:deep(.fc-col-header-cell-cushion) {
+  color: var(--text-primary);
+  padding: 8px;
+}
+
+:deep(.fc-event) {
+  cursor: grab;
+}
+
+:deep(.fc-event:active) {
+  cursor: grabbing;
+}
+</style>

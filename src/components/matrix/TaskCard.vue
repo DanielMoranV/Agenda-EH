@@ -57,19 +57,21 @@ const isDone = computed(() => props.task.estado === 'Finalizado')
 <style scoped>
 .task-card {
   background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   padding: 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  transition: var(--transition);
+  transition: all 0.3s ease;
 }
 
 .task-card:hover {
-  background: var(--bg-surface-hover);
+  background: rgba(30, 41, 59, 0.8);
   border-color: rgba(255, 255, 255, 0.2);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
 .task-card.is-done {
