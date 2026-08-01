@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
+import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import { useTasks } from '../composables/useTasks'
 
@@ -9,12 +10,12 @@ const { tasks, updateTask } = useTasks()
 
 // Configuración básica del calendario
 const calendarOptions = ref({
-  plugins: [ dayGridPlugin, interactionPlugin ],
+  plugins: [ dayGridPlugin, timeGridPlugin, interactionPlugin ],
   initialView: 'dayGridMonth',
   headerToolbar: {
     left: 'prev,next today',
     center: 'title',
-    right: 'dayGridMonth'
+    right: 'dayGridMonth,timeGridWeek,timeGridDay'
   },
   editable: true, // Permite mover y redimensionar
   droppable: true,
@@ -30,12 +31,21 @@ const calendarOptions = ref({
       else if (task.es_urgente && !task.es_importante) bgColor = '#3b82f6' // Q3 Azul
       else if (!task.es_urgente && !task.es_importante) bgColor = '#10b981' // Q4 Verde
 
-      // FullCalendar maneja bien las fechas "YYYY-MM-DD" para eventos de día completo
+      // Formatear fechas respetando horas opcionales
+      const startStr = task.con_hora && task.hora_inicio 
+        ? `${task.fecha_inicio}T${task.hora_inicio}:00` 
+        : task.fecha_inicio;
+        
+      const endStr = task.con_hora && task.hora_vencimiento 
+        ? `${task.fecha_vencimiento}T${task.hora_vencimiento}:00` 
+        : task.fecha_vencimiento;
+
       return {
         id: task.id,
         title: task.titulo,
-        start: task.fecha_inicio || task.fecha_vencimiento,
-        end: task.fecha_vencimiento || task.fecha_inicio,
+        start: startStr || endStr,
+        end: endStr || startStr,
+        allDay: !task.con_hora,
         backgroundColor: bgColor,
         borderColor: bgColor,
         extendedProps: { ...task } // Guardar toda la data de la tarea
@@ -50,15 +60,26 @@ const calendarOptions = ref({
     
     // Extraemos las nuevas fechas en formato 'YYYY-MM-DD' de FullCalendar
     const newStart = event.startStr.split('T')[0]
-    // FullCalendar da endStr como el día exclusivo, por lo que es mejor usar lo que viene
+    // FullCalendar da endStr como el día exclusivo para allDay
     const newEnd = event.endStr ? event.endStr.split('T')[0] : newStart
+
+    const updatePayload = {
+      fecha_inicio: newStart,
+      fecha_vencimiento: newEnd
+    }
+
+    // Si se arrastra dentro de una vista TimeGrid, capturamos las horas
+    if (event.startStr.includes('T')) {
+      updatePayload.con_hora = true
+      updatePayload.hora_inicio = event.startStr.split('T')[1].substring(0, 5) // "HH:MM"
+      if (event.endStr && event.endStr.includes('T')) {
+        updatePayload.hora_vencimiento = event.endStr.split('T')[1].substring(0, 5)
+      }
+    }
 
     try {
       // Esto actualizará Firestore y automáticamente tu Google Calendar!
-      await updateTask(taskId, {
-        fecha_inicio: newStart,
-        fecha_vencimiento: newEnd
-      })
+      await updateTask(taskId, updatePayload)
     } catch (e) {
       console.error("Error al mover la tarea:", e)
       info.revert() // Revertir visualmente si hubo error en Firestore/Google

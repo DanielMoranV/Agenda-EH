@@ -55,8 +55,8 @@ const filteredTasks = computed(() => {
       endBound = new Date(filterDateRange.value.end + 'T23:59:59')
     }
 
-    const tStart = task.fecha_inicio ? new Date(task.fecha_inicio + 'T00:00:00') : null
-    const tEnd = task.fecha_vencimiento ? new Date(task.fecha_vencimiento + 'T00:00:00') : null
+    const tStart = task.fecha_inicio ? new Date(task.fecha_inicio + (task.con_hora && task.hora_inicio ? `T${task.hora_inicio}:00` : 'T00:00:00')) : null
+    const tEnd = task.fecha_vencimiento ? new Date(task.fecha_vencimiento + (task.con_hora && task.hora_vencimiento ? `T${task.hora_vencimiento}:00` : 'T00:00:00')) : null
 
     const isStartInRange = tStart && tStart >= startBound && tStart <= endBound
     const isEndInRange = tEnd && tEnd >= startBound && tEnd <= endBound
@@ -122,10 +122,18 @@ const toggleTaskStatus = async (task) => {
     
     <!-- Mobile Navigation Tabs -->
     <div class="mobile-tabs">
-      <button :class="{ active: mobileTab === 'q1', 'tab-q1': mobileTab === 'q1' }" @click="mobileTab = 'q1'">Hacer</button>
-      <button :class="{ active: mobileTab === 'q2', 'tab-q2': mobileTab === 'q2' }" @click="mobileTab = 'q2'">Decidir</button>
-      <button :class="{ active: mobileTab === 'q3', 'tab-q3': mobileTab === 'q3' }" @click="mobileTab = 'q3'">Delegar</button>
-      <button :class="{ active: mobileTab === 'q4', 'tab-q4': mobileTab === 'q4' }" @click="mobileTab = 'q4'">Eliminar</button>
+      <button :class="{ active: mobileTab === 'q1', 'tab-q1': mobileTab === 'q1' }" @click="mobileTab = 'q1'">
+        Hacer <span class="tab-badge">{{ q1Tasks.length }}</span>
+      </button>
+      <button :class="{ active: mobileTab === 'q2', 'tab-q2': mobileTab === 'q2' }" @click="mobileTab = 'q2'">
+        Decidir <span class="tab-badge">{{ q2Tasks.length }}</span>
+      </button>
+      <button :class="{ active: mobileTab === 'q3', 'tab-q3': mobileTab === 'q3' }" @click="mobileTab = 'q3'">
+        Delegar <span class="tab-badge">{{ q3Tasks.length }}</span>
+      </button>
+      <button :class="{ active: mobileTab === 'q4', 'tab-q4': mobileTab === 'q4' }" @click="mobileTab = 'q4'">
+        Eliminar <span class="tab-badge">{{ q4Tasks.length }}</span>
+      </button>
     </div>
 
     <div class="matrix-container glass-panel">
@@ -133,7 +141,10 @@ const toggleTaskStatus = async (task) => {
         <!-- Q1 -->
         <div class="quadrant q1">
           <div class="quadrant-header">
-            <h3>Hacer (I)</h3>
+            <div class="header-title">
+              <h3>Hacer (I)</h3>
+              <span class="quadrant-badge q1-badge">{{ q1Tasks.length }}</span>
+            </div>
             <p>Urgente e Importante</p>
           </div>
           <div class="task-list">
@@ -144,7 +155,10 @@ const toggleTaskStatus = async (task) => {
         <!-- Q2 -->
         <div class="quadrant q2">
           <div class="quadrant-header">
-            <h3>Decidir (II)</h3>
+            <div class="header-title">
+              <h3>Decidir (II)</h3>
+              <span class="quadrant-badge q2-badge">{{ q2Tasks.length }}</span>
+            </div>
             <p>Importante, No Urgente</p>
           </div>
           <div class="task-list">
@@ -155,7 +169,10 @@ const toggleTaskStatus = async (task) => {
         <!-- Q3 -->
         <div class="quadrant q3">
           <div class="quadrant-header">
-            <h3>Delegar (III)</h3>
+            <div class="header-title">
+              <h3>Delegar (III)</h3>
+              <span class="quadrant-badge q3-badge">{{ q3Tasks.length }}</span>
+            </div>
             <p>Urgente, No Importante</p>
           </div>
           <div class="task-list">
@@ -166,7 +183,10 @@ const toggleTaskStatus = async (task) => {
         <!-- Q4 -->
         <div class="quadrant q4">
           <div class="quadrant-header">
-            <h3>Eliminar (IV)</h3>
+            <div class="header-title">
+              <h3>Eliminar (IV)</h3>
+              <span class="quadrant-badge q4-badge">{{ q4Tasks.length }}</span>
+            </div>
             <p>Ni Urgente Ni Importante</p>
           </div>
           <div class="task-list">
@@ -237,6 +257,28 @@ const toggleTaskStatus = async (task) => {
   z-index: 1;
 }
 
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.quadrant-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: white;
+  min-width: 1.5rem;
+}
+.q1-badge { background: var(--q1-color); }
+.q2-badge { background: var(--q2-color); }
+.q3-badge { background: var(--q3-color); }
+.q4-badge { background: var(--q4-color); }
+
 .task-list {
   display: flex;
   flex-direction: column;
@@ -269,6 +311,18 @@ const toggleTaskStatus = async (task) => {
 /* --- MOBILE TABS --- */
 .mobile-tabs {
   display: none;
+}
+
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 0.15rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  margin-left: 0.4rem;
+  font-weight: 700;
 }
 
 /* Responsive */

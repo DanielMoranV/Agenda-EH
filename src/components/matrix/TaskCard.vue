@@ -12,9 +12,24 @@ defineEmits(['edit', 'delete', 'toggle-status'])
 
 // Damos formato a la fecha si existe (soporta timestamp de Firestore o Date de JS)
 const formattedDate = computed(() => {
-  if (!props.task.fecha_vencimiento) return null
-  const d = props.task.fecha_vencimiento.toDate ? props.task.fecha_vencimiento.toDate() : new Date(props.task.fecha_vencimiento)
-  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+  const dateObj = props.task.fecha_vencimiento || props.task.fecha_inicio
+  if (!dateObj) return null
+
+  // Ensure it doesn't shift days by forcing time if it's a string
+  const d = dateObj.toDate ? dateObj.toDate() : new Date(dateObj + 'T00:00:00')
+  let dateStr = d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+
+  if (props.task.con_hora) {
+    const timeObj = props.task.hora_vencimiento || props.task.hora_inicio
+    if (timeObj) {
+      let [hours, minutes] = timeObj.split(':')
+      const ampm = hours >= 12 ? 'PM' : 'AM'
+      hours = hours % 12 || 12
+      dateStr += ` a las ${hours}:${minutes} ${ampm}`
+    }
+  }
+
+  return dateStr
 })
 
 const isDone = computed(() => props.task.estado === 'Finalizado')

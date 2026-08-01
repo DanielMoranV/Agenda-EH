@@ -19,7 +19,10 @@ const defaultTask = {
   estado: 'Pendiente',
   area_contexto: '',
   fecha_inicio: '',
-  fecha_vencimiento: ''
+  fecha_vencimiento: '',
+  con_hora: false,
+  hora_inicio: '',
+  hora_vencimiento: ''
 }
 
 const formData = ref({ ...defaultTask })
@@ -106,6 +109,33 @@ const handleSubmit = () => {
               type="date" 
               id="fecha_vencimiento" 
               v-model="formData.fecha_vencimiento" 
+            >
+          </div>
+        </div>
+
+        <div class="form-group toggle-group toggle-hora">
+          <label class="toggle">
+            <input type="checkbox" v-model="formData.con_hora">
+            <span class="slider"></span>
+          </label>
+          <span>Definir hora específica</span>
+        </div>
+
+        <div class="form-row" v-if="formData.con_hora">
+          <div class="form-group">
+            <label for="hora_inicio">Hora de Inicio</label>
+            <input 
+              type="time" 
+              id="hora_inicio" 
+              v-model="formData.hora_inicio" 
+            >
+          </div>
+          <div class="form-group">
+            <label for="hora_vencimiento">Hora de Vencimiento</label>
+            <input 
+              type="time" 
+              id="hora_vencimiento" 
+              v-model="formData.hora_vencimiento" 
             >
           </div>
         </div>
@@ -219,6 +249,7 @@ label {
 
 input[type="text"],
 input[type="date"],
+input[type="time"],
 textarea,
 select {
   background: rgba(15, 23, 42, 0.5);
@@ -232,11 +263,20 @@ select {
 
 input[type="text"]:focus,
 input[type="date"]:focus,
+input[type="time"]:focus,
 textarea:focus,
 select:focus {
   outline: none;
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
+.toggle-hora {
+  margin-top: -0.5rem;
+  margin-bottom: 0.5rem;
+  background: transparent;
+  border: none;
+  padding: 0;
 }
 
 .toggle-group {
