@@ -6,6 +6,7 @@ import LoginView from '../views/LoginView.vue'
 import CalendarView from '../views/CalendarView.vue'
 import ContactosView from '../views/ContactosView.vue'
 import ProyectosView from '../views/ProyectosView.vue'
+import GanttView from '../views/GanttView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -20,6 +21,12 @@ const router = createRouter({
       path: '/',
       name: 'dashboard',
       component: DashboardView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/gantt',
+      name: 'gantt',
+      component: GanttView,
       meta: { requiresAuth: true }
     },
     {

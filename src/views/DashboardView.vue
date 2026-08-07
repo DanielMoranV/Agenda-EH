@@ -9,7 +9,7 @@ import { useContacts } from '../composables/useContacts'
 
 // Extraemos estado y métodos de Firestore
 const { tasks, addTask, updateTask, removeTask, loadingTasks } = useTasks()
-const { filterStatus, filterDateType, filterDateRange, triggerNewTask } = useFilters()
+const { filterStatus, filterDateType, filterDateRange, filterProject, triggerNewTask } = useFilters()
 const { projects } = useProjects()
 const { contacts } = useContacts()
 
@@ -25,9 +25,14 @@ watch(triggerNewTask, (val) => {
 const mobileTab = ref('q1') // Para la navegación móvil
 
 const filteredTasks = computed(() => {
-  return tasks.value.filter(task => {
+  const result = tasks.value.filter(task => {
     // 1. Filtro por Estado
     if (filterStatus.value !== 'Todos' && task.estado !== filterStatus.value) {
+      return false
+    }
+
+    // 1.5 Filtro por Proyecto
+    if (filterProject.value !== 'Todos' && task.proyecto_id !== filterProject.value) {
       return false
     }
 
@@ -66,6 +71,25 @@ const filteredTasks = computed(() => {
     const isEndInRange = tEnd && tEnd >= startBound && tEnd <= endBound
 
     return isStartInRange || isEndInRange
+  })
+
+  // Ordenar por fecha y hora
+  return result.sort((a, b) => {
+    const dateStrA = a.fecha_inicio || a.fecha_vencimiento
+    const dateStrB = b.fecha_inicio || b.fecha_vencimiento
+    
+    // Si una no tiene fecha, enviarla al final
+    if (!dateStrA && dateStrB) return 1
+    if (dateStrA && !dateStrB) return -1
+    if (!dateStrA && !dateStrB) return 0
+    
+    const timeA = a.con_hora ? (a.hora_inicio || a.hora_vencimiento || '00:00') : '00:00'
+    const timeB = b.con_hora ? (b.hora_inicio || b.hora_vencimiento || '00:00') : '00:00'
+
+    const dateA = new Date(`${dateStrA}T${timeA}:00`)
+    const dateB = new Date(`${dateStrB}T${timeB}:00`)
+    
+    return dateA - dateB
   })
 })
 

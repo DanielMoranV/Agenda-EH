@@ -1,10 +1,12 @@
 <script setup>
 import { useAuth } from './composables/useAuth'
 import { useFilters } from './composables/useFilters'
+import { useProjects } from './composables/useProjects'
 import { useRoute } from 'vue-router'
 
 const { user, logout } = useAuth()
-const { filterStatus, filterDateType, filterDateRange, triggerNewTask } = useFilters()
+const { filterStatus, filterDateType, filterDateRange, filterProject, triggerNewTask } = useFilters()
+const { projects } = useProjects()
 const route = useRoute()
 </script>
 
@@ -18,6 +20,7 @@ const route = useRoute()
           <nav class="view-nav">
             <router-link to="/" class="nav-link">Matriz</router-link>
             <router-link to="/calendar" class="nav-link">Calendario</router-link>
+            <router-link to="/gantt" class="nav-link">Gantt</router-link>
             <router-link to="/proyectos" class="nav-link">Proyectos</router-link>
             <router-link to="/contactos" class="nav-link">Contactos</router-link>
           </nav>
@@ -35,8 +38,8 @@ const route = useRoute()
         </div>
       </div>
       
-      <!-- Bottom Row: Filters (Only visible in Dashboard view) -->
-      <div class="header-bottom" v-if="route.name === 'dashboard'">
+      <!-- Bottom Row: Filters (Visible in Dashboard and Gantt views) -->
+      <div class="header-bottom" v-if="route.name === 'dashboard' || route.name === 'gantt'">
         <div class="filters-bar">
           <div class="filters-scroll">
             <div class="filter-group">
@@ -46,6 +49,16 @@ const route = useRoute()
                 <option value="Pendiente">Pendiente</option>
                 <option value="En curso">En curso</option>
                 <option value="Finalizado">Finalizado</option>
+              </select>
+            </div>
+            
+            <div class="filter-divider desktop-only"></div>
+            
+            <div class="filter-group">
+              <label>Proyecto:</label>
+              <select v-model="filterProject" class="corp-select">
+                <option value="Todos">Todos</option>
+                <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.nombre }}</option>
               </select>
             </div>
             

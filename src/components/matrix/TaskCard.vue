@@ -42,6 +42,18 @@ const formattedDate = computed(() => {
 
 const isDone = computed(() => props.task.estado === 'Finalizado')
 
+const statusClass = computed(() => {
+  if (props.task.estado === 'En curso') return 'status-in-progress'
+  if (props.task.estado === 'Finalizado') return 'status-done'
+  return 'status-pending'
+})
+
+const statusIcon = computed(() => {
+  if (props.task.estado === 'En curso') return '⏳'
+  if (props.task.estado === 'Finalizado') return '✅'
+  return '📌'
+})
+
 const projectName = computed(() => {
   if (!props.task.proyecto_id) return null
   const project = props.projects.find(p => p.id === props.task.proyecto_id)
@@ -77,7 +89,8 @@ const contactName = computed(() => {
       </div>
     </div>
     
-    <div class="task-meta-tags" v-if="projectName || contactName">
+    <div class="task-meta-tags">
+      <span class="meta-tag" :class="statusClass">{{ statusIcon }} {{ task.estado || 'Pendiente' }}</span>
       <span v-if="projectName" class="meta-tag project-tag">📁 {{ projectName }}</span>
       <span v-if="contactName" class="meta-tag contact-tag">👤 {{ contactName }}</span>
     </div>
@@ -238,6 +251,24 @@ const contactName = computed(() => {
   color: #34d399;
   border-color: rgba(52, 211, 153, 0.2);
   background: rgba(52, 211, 153, 0.05);
+}
+
+.status-pending {
+  color: #fca5a5;
+  border-color: rgba(252, 165, 165, 0.2);
+  background: rgba(252, 165, 165, 0.05);
+}
+
+.status-in-progress {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.2);
+  background: rgba(251, 191, 36, 0.05);
+}
+
+.status-done {
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.2);
+  background: rgba(148, 163, 184, 0.05);
 }
 
 /* Custom Checkbox */
