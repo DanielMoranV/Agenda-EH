@@ -18,6 +18,8 @@ const route = useRoute()
           <nav class="view-nav">
             <router-link to="/" class="nav-link">Matriz</router-link>
             <router-link to="/calendar" class="nav-link">Calendario</router-link>
+            <router-link to="/proyectos" class="nav-link">Proyectos</router-link>
+            <router-link to="/contactos" class="nav-link">Contactos</router-link>
           </nav>
         </div>
         

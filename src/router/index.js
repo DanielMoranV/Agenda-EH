@@ -4,6 +4,8 @@ import { onAuthStateChanged } from 'firebase/auth'
 import DashboardView from '../views/DashboardView.vue'
 import LoginView from '../views/LoginView.vue'
 import CalendarView from '../views/CalendarView.vue'
+import ContactosView from '../views/ContactosView.vue'
+import ProyectosView from '../views/ProyectosView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -24,6 +26,18 @@ const router = createRouter({
       path: '/calendar',
       name: 'calendar',
       component: CalendarView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/contactos',
+      name: 'contactos',
+      component: ContactosView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/proyectos',
+      name: 'proyectos',
+      component: ProyectosView,
       meta: { requiresAuth: true }
     }
   ]

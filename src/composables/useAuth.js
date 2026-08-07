@@ -17,6 +17,13 @@ export function useAuth() {
   const provider = new GoogleAuthProvider()
   // Solicitamos permisos explícitos para gestionar los eventos del calendario
   provider.addScope('https://www.googleapis.com/auth/calendar.events')
+  // Permiso para enviar correos usando la API de Gmail
+  provider.addScope('https://www.googleapis.com/auth/gmail.send')
+  
+  // Forzar que siempre pregunte los permisos (garantiza que pida el scope de Gmail si ya estaba logueado antes)
+  provider.setCustomParameters({
+    prompt: 'consent'
+  })
 
   const loginWithGoogle = async () => {
     error.value = null

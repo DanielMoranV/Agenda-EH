@@ -4,10 +4,14 @@ import TaskCard from '../components/matrix/TaskCard.vue'
 import TaskFormModal from '../components/matrix/TaskFormModal.vue'
 import { useTasks } from '../composables/useTasks'
 import { useFilters } from '../composables/useFilters'
+import { useProjects } from '../composables/useProjects'
+import { useContacts } from '../composables/useContacts'
 
 // Extraemos estado y métodos de Firestore
 const { tasks, addTask, updateTask, removeTask, loadingTasks } = useTasks()
 const { filterStatus, filterDateType, filterDateRange, triggerNewTask } = useFilters()
+const { projects } = useProjects()
+const { contacts } = useContacts()
 
 // Escuchar evento de crear tarea desde la barra superior (App.vue)
 watch(triggerNewTask, (val) => {
@@ -148,7 +152,7 @@ const toggleTaskStatus = async (task) => {
             <p>Urgente e Importante</p>
           </div>
           <div class="task-list">
-            <TaskCard v-for="task in q1Tasks" :key="task.id" :task="task" @edit="openEditModal" @delete="deleteTask" @toggle-status="toggleTaskStatus" />
+            <TaskCard v-for="task in q1Tasks" :key="task.id" :task="task" :projects="projects" :contacts="contacts" @edit="openEditModal" @delete="deleteTask" @toggle-status="toggleTaskStatus" />
           </div>
         </div>
         
@@ -162,7 +166,7 @@ const toggleTaskStatus = async (task) => {
             <p>Importante, No Urgente</p>
           </div>
           <div class="task-list">
-            <TaskCard v-for="task in q2Tasks" :key="task.id" :task="task" @edit="openEditModal" @delete="deleteTask" @toggle-status="toggleTaskStatus" />
+            <TaskCard v-for="task in q2Tasks" :key="task.id" :task="task" :projects="projects" :contacts="contacts" @edit="openEditModal" @delete="deleteTask" @toggle-status="toggleTaskStatus" />
           </div>
         </div>
         
@@ -176,7 +180,7 @@ const toggleTaskStatus = async (task) => {
             <p>Urgente, No Importante</p>
           </div>
           <div class="task-list">
-            <TaskCard v-for="task in q3Tasks" :key="task.id" :task="task" @edit="openEditModal" @delete="deleteTask" @toggle-status="toggleTaskStatus" />
+            <TaskCard v-for="task in q3Tasks" :key="task.id" :task="task" :projects="projects" :contacts="contacts" @edit="openEditModal" @delete="deleteTask" @toggle-status="toggleTaskStatus" />
           </div>
         </div>
         
@@ -190,7 +194,7 @@ const toggleTaskStatus = async (task) => {
             <p>Ni Urgente Ni Importante</p>
           </div>
           <div class="task-list">
-            <TaskCard v-for="task in q4Tasks" :key="task.id" :task="task" @edit="openEditModal" @delete="deleteTask" @toggle-status="toggleTaskStatus" />
+            <TaskCard v-for="task in q4Tasks" :key="task.id" :task="task" :projects="projects" :contacts="contacts" @edit="openEditModal" @delete="deleteTask" @toggle-status="toggleTaskStatus" />
           </div>
         </div>
       </div>
@@ -199,6 +203,8 @@ const toggleTaskStatus = async (task) => {
     <TaskFormModal 
       :is-open="isModalOpen"
       :task="taskToEdit"
+      :projects="projects"
+      :contacts="contacts"
       @close="isModalOpen = false"
       @save="saveTask"
     />

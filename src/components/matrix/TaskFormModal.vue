@@ -6,6 +6,14 @@ const props = defineProps({
   task: {
     type: Object,
     default: null
+  },
+  projects: {
+    type: Array,
+    default: () => []
+  },
+  contacts: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -22,7 +30,10 @@ const defaultTask = {
   fecha_vencimiento: '',
   con_hora: false,
   hora_inicio: '',
-  hora_vencimiento: ''
+  hora_vencimiento: '',
+  proyecto_id: '',
+  contacto_id: '',
+  notificar_responsable: false
 }
 
 const formData = ref({ ...defaultTask })
@@ -158,6 +169,32 @@ const handleSubmit = () => {
               <option value="Finalizado">Finalizado</option>
             </select>
           </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="proyecto">Proyecto (Opcional)</label>
+            <select id="proyecto" v-model="formData.proyecto_id">
+              <option value="">-- Sin asignar --</option>
+              <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.nombre }}</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="responsable">Responsable (Opcional)</label>
+            <select id="responsable" v-model="formData.contacto_id">
+              <option value="">-- Yo mismo --</option>
+              <option v-for="c in contacts" :key="c.id" :value="c.id">{{ c.nombre }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group toggle-group toggle-hora" v-if="formData.contacto_id">
+          <label class="toggle">
+            <input type="checkbox" v-model="formData.notificar_responsable">
+            <span class="slider"></span>
+          </label>
+          <span>Notificar al responsable por correo</span>
         </div>
 
         <div class="form-actions">

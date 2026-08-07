@@ -5,6 +5,14 @@ const props = defineProps({
   task: {
     type: Object,
     required: true
+  },
+  projects: {
+    type: Array,
+    default: () => []
+  },
+  contacts: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -33,6 +41,18 @@ const formattedDate = computed(() => {
 })
 
 const isDone = computed(() => props.task.estado === 'Finalizado')
+
+const projectName = computed(() => {
+  if (!props.task.proyecto_id) return null
+  const project = props.projects.find(p => p.id === props.task.proyecto_id)
+  return project ? project.nombre : null
+})
+
+const contactName = computed(() => {
+  if (!props.task.contacto_id) return null
+  const contact = props.contacts.find(c => c.id === props.task.contacto_id)
+  return contact ? contact.nombre : null
+})
 </script>
 
 <template>
@@ -57,6 +77,11 @@ const isDone = computed(() => props.task.estado === 'Finalizado')
       </div>
     </div>
     
+    <div class="task-meta-tags" v-if="projectName || contactName">
+      <span v-if="projectName" class="meta-tag project-tag">📁 {{ projectName }}</span>
+      <span v-if="contactName" class="meta-tag contact-tag">👤 {{ contactName }}</span>
+    </div>
+
     <p v-if="task.descripcion" class="task-desc">{{ task.descripcion }}</p>
     
     <div class="task-footer">
@@ -183,6 +208,36 @@ const isDone = computed(() => props.task.estado === 'Finalizado')
   padding: 0.2rem 0.4rem;
   border-radius: 4px;
   color: var(--text-secondary);
+}
+
+.task-meta-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.meta-tag {
+  font-size: 0.7rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.project-tag {
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.2);
+  background: rgba(96, 165, 250, 0.05);
+}
+
+.contact-tag {
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.2);
+  background: rgba(52, 211, 153, 0.05);
 }
 
 /* Custom Checkbox */

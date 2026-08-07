@@ -2,6 +2,7 @@ import { ref, onUnmounted, watch } from 'vue'
 import { db } from '../services/firebase/config'
 import { useAuth } from './useAuth'
 import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from '../services/googleCalendar'
+import { sendTaskNotificationEmail } from '../services/gmail'
 import { 
   collection, 
   query, 
@@ -10,7 +11,8 @@ import {
   addDoc, 
   updateDoc, 
   deleteDoc, 
-  doc 
+  doc,
+  getDoc
 } from 'firebase/firestore'
 
 export function useTasks() {
@@ -71,6 +73,21 @@ export function useTasks() {
         user_id: user.value.uid,
         createdAt: new Date()
       })
+
+      // Lógica de Notificación por Correo
+      if (taskData.notificar_responsable && taskData.contacto_id) {
+        try {
+          const contactSnapshot = await getDoc(doc(db, 'contactos', taskData.contacto_id))
+          if (contactSnapshot.exists()) {
+            const contactData = contactSnapshot.data()
+            if (contactData.email) {
+              await sendTaskNotificationEmail(taskData, contactData, token)
+            }
+          }
+        } catch (emailErr) {
+          console.error("No se pudo enviar la notificación de nueva tarea:", emailErr)
+        }
+      }
     } catch (err) {
       console.error("Error al añadir tarea:", err)
       throw err
@@ -97,6 +114,21 @@ export function useTasks() {
 
       delete dataToSave.id
       await updateDoc(taskRef, dataToSave)
+
+      // Lógica de Notificación por Correo (en actualización)
+      if (updates.notificar_responsable && updates.contacto_id) {
+        try {
+          const contactSnapshot = await getDoc(doc(db, 'contactos', updates.contacto_id))
+          if (contactSnapshot.exists()) {
+            const contactData = contactSnapshot.data()
+            if (contactData.email) {
+              await sendTaskNotificationEmail(updates, contactData, token)
+            }
+          }
+        } catch (emailErr) {
+          console.error("No se pudo enviar la notificación de actualización:", emailErr)
+        }
+      }
     } catch (err) {
       console.error("Error al actualizar tarea:", err)
       throw err
