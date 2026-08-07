@@ -152,4 +152,47 @@ const calendarOptions = ref({
 :deep(.fc-event:active) {
   cursor: grabbing;
 }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .calendar-view {
+    padding: 0.75rem;
+    height: calc(100vh - 210px);
+    min-height: 460px;
+  }
+
+  /* La barra de herramientas se apila en filas centradas en lugar de desbordarse */
+  :deep(.fc .fc-toolbar.fc-header-toolbar) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  :deep(.fc .fc-toolbar-chunk) {
+    display: flex;
+    justify-content: center;
+  }
+
+  :deep(.fc .fc-toolbar-title) {
+    font-size: 1.1rem;
+    text-align: center;
+  }
+
+  :deep(.fc .fc-button) {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.8rem;
+  }
+
+  /* Números y cabeceras de día más compactos */
+  :deep(.fc-daygrid-day-number),
+  :deep(.fc-col-header-cell-cushion) {
+    padding: 4px;
+    font-size: 0.8rem;
+  }
+
+  :deep(.fc-event) {
+    font-size: 0.7rem;
+  }
+}
 </style>

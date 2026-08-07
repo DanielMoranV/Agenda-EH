@@ -319,44 +319,64 @@ const route = useRoute()
 
 /* Responsive */
 @media (max-width: 768px) {
+  .app-layout {
+    padding: 0.6rem;
+    gap: 0.6rem;
+  }
+  .corp-header {
+    top: 0.6rem;
+  }
   .header-top {
     flex-direction: column;
-    gap: 1rem;
-    align-items: flex-start;
+    gap: 0.85rem;
+    align-items: stretch;
+    padding: 0.85rem 1rem;
   }
   .brand-nav {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
+    align-items: stretch;
+    gap: 0.85rem;
     width: 100%;
   }
+  .brand-nav h1 {
+    font-size: 1.15rem;
+  }
+  /* La navegación se desplaza horizontalmente en lugar de apretujarse */
   .view-nav {
     width: 100%;
     display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
+  .view-nav::-webkit-scrollbar { display: none; }
   .nav-link {
-    flex: 1;
+    flex: 0 0 auto;
+    white-space: nowrap;
     text-align: center;
   }
   .user-menu {
     width: 100%;
     justify-content: flex-end;
   }
+  .header-bottom {
+    padding: 0.6rem 1rem;
+  }
   .filters-bar {
     padding-bottom: 0.25rem;
   }
-  
+  /* Los filtros también se desplazan horizontalmente (no se apilan en varias filas) */
   .filters-scroll {
-    flex-wrap: wrap;
-    gap: 0.75rem;
+    flex-wrap: nowrap;
+    gap: 1rem;
   }
-  
+
   .desktop-only { display: none; }
-  
+
   .btn-create {
     position: fixed;
-    bottom: 1.5rem;
-    right: 1.5rem;
+    bottom: 1.25rem;
+    right: 1.25rem;
     width: 56px;
     height: 56px;
     border-radius: 50%;
@@ -365,7 +385,7 @@ const route = useRoute()
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
     z-index: 1000;
   }
-  
+
   .btn-create svg {
     width: 24px;
     height: 24px;

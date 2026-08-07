@@ -330,4 +330,15 @@ const contactName = computed(() => {
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
+
+/* En dispositivos táctiles no existe :hover, así que mostramos siempre las acciones */
+@media (hover: none), (max-width: 900px) {
+  .task-actions {
+    opacity: 1;
+  }
+  .icon-btn {
+    width: 32px;
+    height: 32px;
+  }
+}
 </style>

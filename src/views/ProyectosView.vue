@@ -182,7 +182,7 @@ const getContactName = (contactId) => {
 
 .projects-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
   gap: 1.5rem;
 }
 
@@ -315,6 +315,8 @@ const getContactName = (contactId) => {
 .modal-content {
   width: 100%;
   max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -402,6 +404,22 @@ const getContactName = (contactId) => {
 }
 
 @media (max-width: 600px) {
+  .proyectos-view { padding: 1rem; }
+  .view-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .view-header .btn-primary { width: 100%; }
+  .projects-grid { grid-template-columns: 1fr; gap: 1rem; }
   .form-row { grid-template-columns: 1fr; }
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .modal-content {
+    max-width: 100%;
+    max-height: 92vh;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    border-bottom: none;
+  }
 }
 </style>

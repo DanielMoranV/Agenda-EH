@@ -655,4 +655,75 @@ const getStatusColor = (estado) => {
 .color-dot.pending { background: #ef4444; }
 .color-dot.in-progress { background: #f59e0b; }
 .color-dot.done { background: #10b981; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .gantt-container {
+    padding: 1rem;
+  }
+
+  .gantt-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .gantt-header h2 {
+    font-size: 1.25rem;
+  }
+
+  /* Toggle de vista a todo el ancho, botones equitativos */
+  .view-toggle {
+    width: 100%;
+  }
+  .view-toggle button {
+    flex: 1;
+    text-align: center;
+  }
+
+  /* Sidebar más angosto para dejar espacio al gráfico (que ya scrollea) */
+  .gantt-sidebar {
+    width: 140px;
+  }
+
+  .sidebar-header {
+    padding: 0 0.6rem;
+    font-size: 0.7rem;
+  }
+
+  .sidebar-row {
+    padding: 0 0.6rem;
+  }
+
+  .task-title {
+    font-size: 0.8rem;
+  }
+
+  .task-project {
+    font-size: 0.65rem;
+  }
+
+  /* Leyendas apiladas y compactas */
+  .legends-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .gantt-legend {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .gantt-sidebar {
+    width: 110px;
+  }
+  .gantt-legend {
+    gap: 0.5rem 0.75rem;
+  }
+  .legend-item {
+    font-size: 0.75rem;
+  }
+}
 </style>
