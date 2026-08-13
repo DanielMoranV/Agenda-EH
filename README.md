@@ -232,8 +232,13 @@ Antes del primer despliegue, añade el dominio de hosting a los **Orígenes de J
 
 Toda la paleta vive en `src/assets/styles/main.css` como variables CSS, definidas
 por duplicado para `:root[data-theme='light']` y `:root[data-theme='dark']`.
-Son tonos corporativos de baja saturación: neutros con matiz azul pizarra y
-acentos apagados (azul acero, terracota, ocre, verde salvia).
+
+Los dos temas comparten neutros con matiz azul pizarra, pero **no comparten el
+nivel de croma de los acentos, y es deliberado**: sobre fondo oscuro el ojo
+necesita más saturación para percibir el mismo color, así que desaturar allí se
+lee como gris sucio. El tema claro va apagado (azul acero, terracota, ocre,
+verde salvia) y el oscuro conserva acentos vivos sobre un fondo profundo
+(`#0e141d`), que es lo que les da sitio para contrastar.
 
 El tema se resuelve así:
 
@@ -267,8 +272,13 @@ Dos casos especiales que conviene conocer:
   del CSS y se recalcula al cambiar de tema, de modo que `main.css` sigue siendo
   la única fuente de verdad.
 
-Los 30 pares de color relevantes cumplen el contraste mínimo de WCAG AA (4.5:1
+Los 44 pares de color relevantes cumplen el contraste mínimo de WCAG AA (4.5:1
 en texto normal, 3:1 en texto grande e indicadores) en ambos temas.
+
+Una excepción intencionada: el cuadrante IV (Eliminar) se queda gris claro en el
+tema oscuro en vez de recuperar el gris original `#6b7280`. Con aquel valor el
+texto sobre sus eventos del calendario bajaba a 3,9:1, y es el cuadrante neutro:
+no gana nada con más color.
 
 ---
 
