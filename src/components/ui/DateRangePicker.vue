@@ -354,7 +354,7 @@ onUnmounted(() => {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 12px 30px -8px var(--overlay-bg);
   padding: 0.85rem;
   width: max-content;
 }
@@ -433,14 +433,14 @@ onUnmounted(() => {
 
 /* Relleno del interior del rango */
 .drp-day.is-inside {
-  background: rgba(37, 99, 235, 0.18);
+  background: var(--accent-soft-bg);
   color: var(--text-primary);
 }
 
 /* Extremos del rango */
 .drp-day.is-edge {
   background: var(--accent-primary);
-  color: #fff;
+  color: var(--text-inverse);
   font-weight: 600;
 }
 .drp-day.is-start { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }

@@ -6,9 +6,27 @@ import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import { useTasks } from '../composables/useTasks'
 import { useNotifications } from '../composables/useNotifications'
+import { useTheme } from '../composables/useTheme'
 
 const { tasks, updateTask } = useTasks()
 const { notifyError } = useNotifications()
+const { resolvedTheme, readThemeColors } = useTheme()
+
+// FullCalendar pinta los eventos con estilos en línea, así que necesita colores
+// resueltos, no `var(--...)`. Los leemos del CSS para que la paleta siga
+// teniendo una sola fuente de verdad, y los recalculamos al cambiar de tema.
+const quadrantColors = computed(() => {
+  resolvedTheme.value // dependencia explícita: fuerza el recálculo al cambiar el tema
+  return readThemeColors(['q1-color', 'q2-color', 'q3-color', 'q4-color', 'on-color-text'])
+})
+
+const colorForTask = (task) => {
+  const c = quadrantColors.value
+  if (task.es_urgente && task.es_importante) return c['q1-color']    // Hacer
+  if (!task.es_urgente && task.es_importante) return c['q2-color']   // Decidir
+  if (task.es_urgente && !task.es_importante) return c['q3-color']   // Delegar
+  return c['q4-color']                                                // Eliminar
+}
 
 // Configuración básica del calendario
 const calendarOptions = ref({
@@ -26,12 +44,8 @@ const calendarOptions = ref({
   // Mapeamos nuestras tareas al formato de eventos de FullCalendar
   events: computed(() => {
     return tasks.value.map(task => {
-      // Determinar color base a la matriz (usamos valores por defecto si no existen las variables)
-      let bgColor = '#64748b' // Gris oscuro por defecto
-      if (task.es_urgente && task.es_importante) bgColor = '#ef4444' // Q1 Rojo
-      else if (!task.es_urgente && task.es_importante) bgColor = '#f59e0b' // Q2 Naranja
-      else if (task.es_urgente && !task.es_importante) bgColor = '#3b82f6' // Q3 Azul
-      else if (!task.es_urgente && !task.es_importante) bgColor = '#10b981' // Q4 Verde
+      // Color según el cuadrante de la matriz
+      const bgColor = colorForTask(task)
 
       // Formatear fechas respetando horas opcionales
       const startStr = task.con_hora && task.hora_inicio 
@@ -50,6 +64,7 @@ const calendarOptions = ref({
         allDay: !task.con_hora,
         backgroundColor: bgColor,
         borderColor: bgColor,
+        textColor: quadrantColors.value['on-color-text'],
         extendedProps: { ...task } // Guardar toda la data de la tarea
       }
     }).filter(e => e.start) // Solo renderizamos eventos que tengan alguna fecha asignada
@@ -107,18 +122,47 @@ const calendarOptions = ref({
   flex-direction: column;
 }
 
-/* Adaptando FullCalendar al Dark Mode de tu app */
+/* FullCalendar se adapta a ambos temas mapeando sus variables a las nuestras */
 :deep(.fc) {
-  --fc-border-color: rgba(255, 255, 255, 0.1);
+  --fc-border-color: var(--border-color);
   --fc-page-bg-color: transparent;
-  --fc-neutral-bg-color: rgba(255, 255, 255, 0.05);
+  --fc-neutral-bg-color: var(--hover-wash);
   --fc-neutral-text-color: var(--text-secondary);
-  --fc-today-bg-color: rgba(139, 92, 246, 0.15);
+  --fc-today-bg-color: var(--accent-soft-bg);
+  --fc-button-text-color: var(--text-inverse);
+  --fc-button-bg-color: var(--accent-primary);
+  --fc-button-border-color: var(--accent-primary);
+  --fc-button-hover-bg-color: var(--accent-primary-hover);
+  --fc-button-hover-border-color: var(--accent-primary-hover);
+  --fc-button-active-bg-color: var(--accent-primary-hover);
+  --fc-button-active-border-color: var(--accent-primary-hover);
+  --fc-event-text-color: var(--on-color-text);
+  --fc-now-indicator-color: var(--q1-color);
+  --fc-highlight-color: var(--accent-soft-bg);
+  color: var(--text-primary);
+}
+
+/* Números de día, horas de la columna lateral y textos "más eventos" */
+:deep(.fc .fc-daygrid-day-top),
+:deep(.fc .fc-timegrid-slot-label-cushion),
+:deep(.fc .fc-timegrid-axis-cushion),
+:deep(.fc .fc-list-day-text),
+:deep(.fc .fc-daygrid-more-link) {
+  color: var(--text-secondary);
+}
+
+/* Días de otros meses: atenuados en ambos temas */
+:deep(.fc .fc-day-other .fc-daygrid-day-top) {
+  opacity: 0.45;
+}
+
+:deep(.fc .fc-day-today) {
+  background: var(--accent-soft-bg) !important;
 }
 
 :deep(.fc-theme-standard td), 
 :deep(.fc-theme-standard th) {
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--border-color);
 }
 
 :deep(.fc .fc-toolbar-title) {

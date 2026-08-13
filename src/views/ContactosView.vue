@@ -206,13 +206,13 @@ const deleteContact = async (id) => {
 }
 
 .btn-icon:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-color);
   color: var(--text-primary);
 }
 
 .text-danger:hover {
-  background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
+  background: var(--danger-soft-bg);
+  color: var(--danger-color);
 }
 
 .btn-primary {
@@ -257,7 +257,7 @@ const deleteContact = async (id) => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--overlay-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -273,7 +273,7 @@ const deleteContact = async (id) => {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  box-shadow: var(--shadow-lg);
   animation: slideUp 0.2s ease-out;
 }
 
@@ -321,7 +321,7 @@ const deleteContact = async (id) => {
 }
 
 .form-group input {
-  background: rgba(15, 23, 42, 0.5);
+  background: var(--bg-inset);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
   border-radius: var(--radius-sm);
@@ -332,7 +332,7 @@ const deleteContact = async (id) => {
 .form-group input:focus {
   outline: none;
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+  box-shadow: 0 0 0 2px var(--accent-soft-border);
 }
 
 .form-actions {
@@ -352,7 +352,7 @@ const deleteContact = async (id) => {
 }
 
 .btn-cancel:hover {
-  background: rgba(255,255,255,0.05);
+  background: var(--hover-wash);
   color: var(--text-primary);
 }
 

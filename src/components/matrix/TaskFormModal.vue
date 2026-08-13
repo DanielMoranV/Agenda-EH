@@ -219,7 +219,7 @@ const handleSubmit = () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--overlay-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -238,7 +238,7 @@ const handleSubmit = () => {
   display: flex;
   flex-direction: column;
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 
@@ -295,7 +295,7 @@ input[type="date"],
 input[type="time"],
 textarea,
 select {
-  background: rgba(15, 23, 42, 0.5);
+  background: var(--bg-inset);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
   border-radius: var(--radius-sm);
@@ -311,7 +311,7 @@ textarea:focus,
 select:focus {
   outline: none;
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+  box-shadow: 0 0 0 2px var(--accent-soft-border);
 }
 
 .toggle-hora {
@@ -326,7 +326,7 @@ select:focus {
   flex-direction: row;
   align-items: center;
   gap: 0.75rem;
-  background: rgba(255,255,255,0.03);
+  background: var(--stripe-wash);
   padding: 0.75rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-color);
@@ -349,7 +349,7 @@ select:focus {
   position: absolute;
   cursor: pointer;
   top: 0; left: 0; right: 0; bottom: 0;
-  background-color: rgba(255,255,255,0.1);
+  background-color: var(--border-color);
   transition: .3s;
   border-radius: 20px;
 }
@@ -384,7 +384,7 @@ input:checked + .slider:before {
   border-radius: var(--radius-md);
   font-weight: 500;
 }
-.btn-cancel:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+.btn-cancel:hover { background: var(--hover-wash); color: var(--text-primary); }
 
 .btn-primary {
   background: var(--accent-primary);

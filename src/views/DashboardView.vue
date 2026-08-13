@@ -293,8 +293,8 @@ const toggleTaskStatus = async (task) => {
 
 .task-list::-webkit-scrollbar { width: 4px; }
 .task-list::-webkit-scrollbar-track { background: transparent; }
-.task-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-.task-list::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+.task-list::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+.task-list::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
 
 /* Colores de Cuadrantes */
 .q1 { border-left: 4px solid var(--q1-color); }
@@ -318,7 +318,7 @@ const toggleTaskStatus = async (task) => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--hover-wash-strong);
   padding: 0.15rem 0.5rem;
   border-radius: 12px;
   font-size: 0.75rem;
@@ -341,8 +341,8 @@ const toggleTaskStatus = async (task) => {
   
   .mobile-tabs button {
     flex: 1 0 auto;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: var(--hover-wash);
+    border: 1px solid var(--border-color);
     color: var(--text-secondary);
     padding: 0.75rem 1rem;
     border-radius: 20px;
@@ -353,7 +353,7 @@ const toggleTaskStatus = async (task) => {
   
   .mobile-tabs button.active {
     color: white;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-md);
   }
   
   .mobile-tabs button.tab-q1 { background: var(--q1-color); border-color: var(--q1-color); }

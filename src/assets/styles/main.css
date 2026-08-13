@@ -1,39 +1,178 @@
+/* ===========================================================================
+   Sistema de temas — Agenda EH
+   ---------------------------------------------------------------------------
+   Paleta corporativa de baja saturación: neutros con matiz azul pizarra y
+   acentos apagados (azul acero, terracota, ocre, verde salvia). Evitamos los
+   colores puros de Tailwind (#ef4444, #3b82f6...) porque en pantallas grandes
+   y en uso prolongado resultan estridentes.
+
+   El tema activo se aplica con data-theme="light|dark" en <html>. Un script
+   en index.html lo fija ANTES de pintar para que no haya parpadeo, y
+   useTheme.js lo mantiene sincronizado con la preferencia del sistema.
+
+   Regla al escribir estilos: nunca pongas un color literal en un componente.
+   Si te falta un matiz, añade el token aquí en los DOS temas.
+   =========================================================================== */
+
+:root,
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  /* --- Superficies --- */
+  --bg-base: #f3f5f8;            /* fondo de la página */
+  --bg-surface: #ffffff;         /* tarjetas y paneles */
+  --bg-surface-hover: #eaeef4;
+  --bg-elevated: #ffffff;        /* modales, popovers, desplegables */
+  --bg-inset: #f7f9fb;           /* campos de formulario, zonas hundidas */
+  --bg-header: #fbfcfe;          /* franja superior de la cabecera */
+
+  /* --- Texto --- */
+  --text-primary: #1c2531;
+  --text-secondary: #5a6675;
+  --text-muted: #8792a1;
+  --text-inverse: #ffffff;       /* sobre fondos de acento */
+
+  /* --- Bordes --- */
+  --border-color: #dfe4ec;
+  --border-strong: #c4ccd8;
+  --border-focus: #35618e;
+
+  /* --- Acento corporativo (azul acero) --- */
+  --accent-primary: #35618e;
+  --accent-primary-hover: #2b527a;
+  --accent-text: #35618e;        /* acento legible como texto */
+  --accent-soft-bg: rgba(53, 97, 142, 0.09);
+  --accent-soft-border: rgba(53, 97, 142, 0.24);
+
+  /* --- Semánticos --- */
+  --success-color: #3f7d5e;
+  --success-soft-bg: rgba(63, 125, 94, 0.10);
+  --success-soft-border: rgba(63, 125, 94, 0.26);
+
+  --warning-color: #97701f;
+  --warning-soft-bg: rgba(151, 112, 31, 0.10);
+  --warning-soft-border: rgba(151, 112, 31, 0.26);
+
+  --danger-color: #a8524a;
+  --danger-soft-bg: rgba(168, 82, 74, 0.10);
+  --danger-soft-border: rgba(168, 82, 74, 0.26);
+
+  --info-color: #35618e;
+  --info-soft-bg: rgba(53, 97, 142, 0.10);
+  --info-soft-border: rgba(53, 97, 142, 0.26);
+
+  /* --- Cuadrantes de la matriz --- */
+  --q1-color: #a8524a;           /* Hacer — terracota */
+  --q1-bg: rgba(168, 82, 74, 0.06);
+  --q2-color: #35618e;           /* Decidir — azul acero */
+  --q2-bg: rgba(53, 97, 142, 0.06);
+  --q3-color: #97701f;           /* Delegar — ocre */
+  --q3-bg: rgba(151, 112, 31, 0.06);
+  --q4-color: #6b7787;           /* Eliminar — gris pizarra */
+  --q4-bg: rgba(107, 119, 135, 0.06);
+
+  /* --- Efectos --- */
+  --overlay-bg: rgba(22, 32, 45, 0.45);
+  --hover-wash: rgba(20, 32, 48, 0.05);      /* velo neutro de hover */
+  --hover-wash-strong: rgba(20, 32, 48, 0.09);
+  --stripe-wash: rgba(20, 32, 48, 0.022);    /* filas alternas, rejillas */
+
+  --shadow-sm: 0 1px 2px rgba(20, 32, 48, 0.06);
+  --shadow-md: 0 4px 12px -2px rgba(20, 32, 48, 0.10);
+  --shadow-lg: 0 14px 34px -10px rgba(20, 32, 48, 0.20);
+  --shadow-accent: 0 4px 12px rgba(53, 97, 142, 0.28);
+
+  /* Botón de Google: en claro conserva el blanco de marca */
+  --google-btn-bg: #ffffff;
+  --google-btn-text: #1f2937;
+
+  /* Texto sobre barras/eventos de color (Gantt) */
+  --on-color-text: #ffffff;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* --- Superficies --- */
+  --bg-base: #0e141d;
+  --bg-surface: #151d28;
+  --bg-surface-hover: #1e2836;
+  --bg-elevated: #1a2331;
+  --bg-inset: #0f1620;
+  --bg-header: #111925;
+
+  /* --- Texto --- */
+  --text-primary: #e4e9f0;
+  --text-secondary: #97a3b6;
+  --text-muted: #6a7688;
+  --text-inverse: #ffffff;
+
+  /* --- Bordes --- */
+  --border-color: #25303f;
+  --border-strong: #33404f;
+  --border-focus: #5b8bb8;
+
+  /* --- Acento corporativo --- */
+  --accent-primary: #3a6d9a;
+  --accent-primary-hover: #467fae;
+  --accent-text: #7fabd1;
+  --accent-soft-bg: rgba(90, 140, 185, 0.14);
+  --accent-soft-border: rgba(90, 140, 185, 0.32);
+
+  /* --- Semánticos --- */
+  --success-color: #6faa8b;
+  --success-soft-bg: rgba(111, 170, 139, 0.14);
+  --success-soft-border: rgba(111, 170, 139, 0.30);
+
+  --warning-color: #c9a35f;
+  --warning-soft-bg: rgba(201, 163, 95, 0.14);
+  --warning-soft-border: rgba(201, 163, 95, 0.30);
+
+  --danger-color: #c97b74;
+  --danger-soft-bg: rgba(201, 123, 116, 0.14);
+  --danger-soft-border: rgba(201, 123, 116, 0.30);
+
+  --info-color: #7fabd1;
+  --info-soft-bg: rgba(127, 171, 209, 0.14);
+  --info-soft-border: rgba(127, 171, 209, 0.30);
+
+  /* --- Cuadrantes de la matriz --- */
+  --q1-color: #c97b74;
+  --q1-bg: rgba(201, 123, 116, 0.07);
+  --q2-color: #7fabd1;
+  --q2-bg: rgba(127, 171, 209, 0.07);
+  --q3-color: #c9a35f;
+  --q3-bg: rgba(201, 163, 95, 0.07);
+  --q4-color: #8b97a8;
+  --q4-bg: rgba(139, 151, 168, 0.07);
+
+  /* --- Efectos --- */
+  --overlay-bg: rgba(6, 10, 16, 0.72);
+  --hover-wash: rgba(255, 255, 255, 0.05);
+  --hover-wash-strong: rgba(255, 255, 255, 0.09);
+  --stripe-wash: rgba(255, 255, 255, 0.02);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.40);
+  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.50);
+  --shadow-lg: 0 14px 34px -10px rgba(0, 0, 0, 0.65);
+  --shadow-accent: 0 4px 12px rgba(58, 109, 154, 0.45);
+
+  /* En oscuro un blanco puro deslumbra: usamos la superficie elevada */
+  --google-btn-bg: #e9edf3;
+  --google-btn-text: #1f2937;
+
+  /* En oscuro las barras son pasteles claros: el texto debe ir oscuro */
+  --on-color-text: #101720;
+}
+
+/* --- Tokens sin variante de tema --- */
 :root {
-  /* Color Palette - Corporate Dark Theme */
-  --bg-base: #111827; /* gray-900 */
-  --bg-surface: #1f2937; /* gray-800 */
-  --bg-surface-hover: #374151; /* gray-700 */
-  
-  --text-primary: #f9fafb;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
-  
-  --border-color: #374151;
-  --border-focus: #3b82f6;
-
-  /* Quadrant Colors - Toned down */
-  --q1-color: #ef4444; 
-  --q1-bg: rgba(239, 68, 68, 0.05);
-  
-  --q2-color: #3b82f6; 
-  --q2-bg: rgba(59, 130, 246, 0.05);
-  
-  --q3-color: #f59e0b; 
-  --q3-bg: rgba(245, 158, 11, 0.05);
-  
-  --q4-color: #6b7280; 
-  --q4-bg: rgba(107, 114, 128, 0.05);
-
-  /* General accents - Corporate Blue */
-  --accent-primary: #2563eb; 
-  --accent-primary-hover: #1d4ed8;
-  
-  /* Utils - Harder edges */
   --radius-lg: 8px;
   --radius-md: 6px;
   --radius-sm: 4px;
-  
-  --shadow-glass: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+
+  /* Alias heredado: varios componentes aún lo usan */
+  --shadow-glass: var(--shadow-sm);
   --backdrop-blur: none;
   --transition: all 0.2s ease;
 }
@@ -50,15 +189,23 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  /* Transición al cambiar de tema. Se desactiva durante el arranque
+     (clase .theme-booting) para que la carga inicial no se vea animada. */
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.theme-booting * {
+  transition: none !important;
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   letter-spacing: -0.02em;
+  color: var(--text-primary);
 }
 
 a {
-  color: var(--accent-primary);
+  color: var(--accent-text);
   text-decoration: none;
   transition: var(--transition);
 }
@@ -72,11 +219,35 @@ button {
   cursor: pointer;
   border: none;
   outline: none;
+  color: inherit;
+}
+
+/* Anillo de foco visible en ambos temas (accesibilidad de teclado) */
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
 }
 
 .glass-panel {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-glass);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Barras de scroll acordes al tema (WebKit; Firefox usa color-scheme) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-base);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 5px;
+  border: 2px solid var(--bg-base);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }

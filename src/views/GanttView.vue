@@ -192,9 +192,9 @@ const getTaskGridStyle = (task) => {
 }
 
 const getStatusColor = (estado) => {
-  if (estado === 'En curso') return '#f59e0b' // Ámbar
-  if (estado === 'Finalizado') return '#10b981' // Verde
-  return '#ef4444' // Rojo (Pendiente)
+  if (estado === 'En curso') return 'var(--warning-color)' // Ámbar
+  if (estado === 'Finalizado') return 'var(--success-color)' // Verde
+  return 'var(--danger-color)' // Rojo (Pendiente)
 }
 </script>
 
@@ -352,7 +352,7 @@ const getStatusColor = (estado) => {
 .view-toggle {
   display: flex;
   gap: 0.25rem;
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--bg-header);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 0.25rem;
@@ -400,7 +400,7 @@ const getStatusColor = (estado) => {
   width: 250px;
   flex-shrink: 0;
   border-right: 1px solid var(--border-color);
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--bg-header);
   display: flex;
   flex-direction: column;
 }
@@ -422,7 +422,7 @@ const getStatusColor = (estado) => {
   display: flex;
   align-items: center;
   padding: 0 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--hover-wash);
 }
 
 .task-info {
@@ -461,7 +461,7 @@ const getStatusColor = (estado) => {
 
 .task-project {
   font-size: 0.7rem;
-  color: #60a5fa;
+  color: var(--info-color);
 }
 
 /* Gráfico */
@@ -476,7 +476,7 @@ const getStatusColor = (estado) => {
 .chart-timeline {
   display: grid;
   border-bottom: 1px solid var(--border-color);
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--bg-inset);
 }
 
 .timeline-day {
@@ -486,14 +486,14 @@ const getStatusColor = (estado) => {
   justify-content: center;
   font-size: 0.75rem;
   color: var(--text-secondary);
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  border-right: 1px solid var(--hover-wash);
   overflow: hidden;
   white-space: nowrap;
 }
 
 .timeline-day.is-weekend {
   color: var(--q4-color);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--stripe-wash);
 }
 
 .chart-rows {
@@ -512,11 +512,11 @@ const getStatusColor = (estado) => {
 }
 
 .grid-line {
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  border-right: 1px solid var(--hover-wash);
 }
 
 .grid-line.is-weekend {
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--stripe-wash);
 }
 
 .task-bars {
@@ -542,7 +542,7 @@ const getStatusColor = (estado) => {
   display: flex;
   align-items: center;
   padding: 0 0.5rem;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  box-shadow: var(--shadow-sm);
   transition: transform 0.2s;
   cursor: pointer;
   overflow: hidden;
@@ -554,13 +554,13 @@ const getStatusColor = (estado) => {
 }
 
 .bar-label {
-  color: white;
+  /* El color se invierte con el tema: ver --on-color-text en main.css */
+  color: var(--on-color-text);
   font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
 
 /* Leyenda */
@@ -572,7 +572,7 @@ const getStatusColor = (estado) => {
   gap: 1rem;
   margin-top: 1rem;
   padding: 0.75rem 1rem;
-  background: rgba(0, 0, 0, 0.15);
+  background: var(--bg-header);
   border-radius: var(--radius-sm);
 }
 
@@ -603,9 +603,9 @@ const getStatusColor = (estado) => {
   height: 12px;
   border-radius: 50%;
 }
-.color-dot.pending { background: #ef4444; }
-.color-dot.in-progress { background: #f59e0b; }
-.color-dot.done { background: #10b981; }
+.color-dot.pending { background: var(--danger-color); }
+.color-dot.in-progress { background: var(--warning-color); }
+.color-dot.done { background: var(--success-color); }
 
 /* Responsive */
 @media (max-width: 768px) {

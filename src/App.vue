@@ -7,6 +7,7 @@ import { useContacts } from './composables/useContacts'
 import { useRoute, useRouter } from 'vue-router'
 import ToastHost from './components/ui/ToastHost.vue'
 import GoogleSyncStatus from './components/ui/GoogleSyncStatus.vue'
+import ThemeToggle from './components/ui/ThemeToggle.vue'
 import DateRangePicker from './components/ui/DateRangePicker.vue'
 
 const { user, authReady, logout } = useAuth()
@@ -54,6 +55,7 @@ watch(user, (currentUser) => {
         <div class="header-actions">
           <div class="user-menu">
             <GoogleSyncStatus />
+            <ThemeToggle />
             <img v-if="user.photoURL" :src="user.photoURL" alt="Avatar" class="user-avatar" />
             <div v-else class="avatar-placeholder"></div>
             <button @click="logout" class="logout-btn" title="Cerrar Sesión">
@@ -174,7 +176,7 @@ watch(user, (currentUser) => {
   justify-content: space-between;
   align-items: center;
   padding: 1rem 1.5rem;
-  background: rgba(0, 0, 0, 0.15);
+  background: var(--bg-header);
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -216,7 +218,7 @@ watch(user, (currentUser) => {
 .nav-link.router-link-active {
   background: var(--bg-surface-hover);
   color: var(--text-primary);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .user-menu {
@@ -253,7 +255,7 @@ watch(user, (currentUser) => {
 }
 
 .logout-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--hover-wash);
   color: var(--text-primary);
 }
 
@@ -459,7 +461,7 @@ watch(user, (currentUser) => {
     border-radius: 50%;
     padding: 0;
     justify-content: center;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    box-shadow: var(--shadow-accent);
     z-index: 1000;
   }
 

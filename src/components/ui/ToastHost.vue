@@ -74,10 +74,10 @@ const runAction = async (toast) => {
   border: 1px solid var(--border-color);
   border-left: 3px solid var(--toast-accent, var(--accent-primary));
   border-radius: var(--radius-md);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-lg);
 }
 
-.toast--success { --toast-accent: #10b981; }
+.toast--success { --toast-accent: var(--success-color); }
 .toast--error   { --toast-accent: var(--q1-color); }
 .toast--warning { --toast-accent: var(--q3-color); }
 .toast--info    { --toast-accent: var(--accent-primary); }
@@ -113,7 +113,7 @@ const runAction = async (toast) => {
 .toast-action {
   margin-top: 0.6rem;
   background: var(--toast-accent);
-  color: #fff;
+  color: var(--text-inverse);
   border: none;
   font-size: 0.78rem;
   font-weight: 600;

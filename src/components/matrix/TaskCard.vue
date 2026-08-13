@@ -109,7 +109,7 @@ const contactName = computed(() => {
 
 <style scoped>
 .task-card {
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--bg-surface);
   backdrop-filter: blur(8px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
@@ -121,10 +121,10 @@ const contactName = computed(() => {
 }
 
 .task-card:hover {
-  background: rgba(30, 41, 59, 0.8);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--bg-surface-hover);
+  border-color: var(--border-strong);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-md);
 }
 
 .task-card.is-done {
@@ -176,7 +176,7 @@ const contactName = computed(() => {
 }
 
 .icon-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-color);
 }
 
 .edit-btn:hover { color: var(--accent-primary); }
@@ -217,7 +217,7 @@ const contactName = computed(() => {
   font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-color);
   padding: 0.2rem 0.4rem;
   border-radius: 4px;
   color: var(--text-secondary);
@@ -231,8 +231,8 @@ const contactName = computed(() => {
 
 .meta-tag {
   font-size: 0.7rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--hover-wash);
+  border: 1px solid var(--border-color);
   padding: 0.15rem 0.4rem;
   border-radius: 4px;
   color: var(--text-secondary);
@@ -242,33 +242,33 @@ const contactName = computed(() => {
 }
 
 .project-tag {
-  color: #60a5fa;
-  border-color: rgba(96, 165, 250, 0.2);
-  background: rgba(96, 165, 250, 0.05);
+  color: var(--info-color);
+  border-color: var(--info-soft-border);
+  background: var(--info-soft-bg);
 }
 
 .contact-tag {
-  color: #34d399;
-  border-color: rgba(52, 211, 153, 0.2);
-  background: rgba(52, 211, 153, 0.05);
+  color: var(--success-color);
+  border-color: var(--success-soft-border);
+  background: var(--success-soft-bg);
 }
 
 .status-pending {
-  color: #fca5a5;
-  border-color: rgba(252, 165, 165, 0.2);
-  background: rgba(252, 165, 165, 0.05);
+  color: var(--danger-color);
+  border-color: var(--danger-soft-border);
+  background: var(--danger-soft-bg);
 }
 
 .status-in-progress {
-  color: #fbbf24;
-  border-color: rgba(251, 191, 36, 0.2);
-  background: rgba(251, 191, 36, 0.05);
+  color: var(--warning-color);
+  border-color: var(--warning-soft-border);
+  background: var(--warning-soft-bg);
 }
 
 .status-done {
-  color: #94a3b8;
-  border-color: rgba(148, 163, 184, 0.2);
-  background: rgba(148, 163, 184, 0.05);
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+  background: var(--hover-wash);
 }
 
 /* Custom Checkbox */

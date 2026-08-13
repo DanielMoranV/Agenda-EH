@@ -223,9 +223,9 @@ const getContactName = (contactId) => {
   border-radius: 12px;
   white-space: nowrap;
 }
-.status-badge.activo { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-.status-badge.en-pausa { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
-.status-badge.finalizado { background: rgba(107, 114, 128, 0.2); color: #9ca3af; }
+.status-badge.activo { background: var(--success-soft-bg); color: var(--success-color); }
+.status-badge.en-pausa { background: var(--warning-soft-bg); color: var(--warning-color); }
+.status-badge.finalizado { background: var(--hover-wash-strong); color: var(--text-secondary); }
 
 .project-desc {
   color: var(--text-secondary);
@@ -235,7 +235,7 @@ const getContactName = (contactId) => {
 }
 
 .project-meta {
-  border-top: 1px solid rgba(255,255,255,0.05);
+  border-top: 1px solid var(--hover-wash);
   padding-top: 1rem;
   margin-bottom: 1rem;
 }
@@ -270,8 +270,8 @@ const getContactName = (contactId) => {
   align-items: center;
   justify-content: center;
 }
-.btn-icon:hover { background: rgba(255, 255, 255, 0.1); color: var(--text-primary); }
-.text-danger:hover { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.btn-icon:hover { background: var(--border-color); color: var(--text-primary); }
+.text-danger:hover { background: var(--danger-soft-bg); color: var(--danger-color); }
 
 .btn-primary {
   background: var(--accent-primary);
@@ -310,7 +310,7 @@ const getContactName = (contactId) => {
 .modal-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--overlay-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -326,7 +326,7 @@ const getContactName = (contactId) => {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  box-shadow: var(--shadow-lg);
   animation: slideUp 0.2s ease-out;
 }
 
@@ -373,7 +373,7 @@ const getContactName = (contactId) => {
 }
 
 .form-group input, .form-group textarea, .form-group select {
-  background: rgba(15, 23, 42, 0.5);
+  background: var(--bg-inset);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
   border-radius: var(--radius-sm);
@@ -384,7 +384,7 @@ const getContactName = (contactId) => {
 .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
   outline: none;
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+  box-shadow: 0 0 0 2px var(--accent-soft-border);
 }
 
 .form-actions {
@@ -402,7 +402,7 @@ const getContactName = (contactId) => {
   border-radius: var(--radius-md);
   cursor: pointer;
 }
-.btn-cancel:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+.btn-cancel:hover { background: var(--hover-wash); color: var(--text-primary); }
 
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(10px); }

@@ -1,6 +1,7 @@
 <script setup>
 import { useAuth } from '../composables/useAuth'
 import { useRoute, useRouter } from 'vue-router'
+import ThemeToggle from '../components/ui/ThemeToggle.vue'
 
 const { loginWithGoogle, loading, error, sessionEndReason } = useAuth()
 const route = useRoute()
@@ -17,6 +18,11 @@ const handleLogin = async () => {
 
 <template>
   <div class="login-container">
+    <!-- Aquí no hay cabecera todavía, así que el conmutador va suelto -->
+    <div class="login-theme-toggle">
+      <ThemeToggle />
+    </div>
+
     <div class="login-card glass-panel">
       <div class="brand">
         <div class="logo-placeholder"></div>
@@ -46,6 +52,7 @@ const handleLogin = async () => {
 
 <style scoped>
 .login-container {
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -53,7 +60,13 @@ const handleLogin = async () => {
   width: 100%;
   padding: 1rem;
   /* Fondo animado sutil */
-  background: radial-gradient(circle at center, rgba(139, 92, 246, 0.15) 0%, transparent 60%);
+  background: radial-gradient(circle at center, var(--accent-soft-bg) 0%, transparent 60%);
+}
+
+.login-theme-toggle {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
 }
 
 .login-card {
@@ -80,7 +93,7 @@ const handleLogin = async () => {
   border-radius: 16px;
   background: linear-gradient(135deg, var(--accent-primary), var(--q2-color));
   margin-bottom: 1rem;
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+  box-shadow: var(--shadow-accent);
   animation: pulse 3s infinite alternate;
 }
 
@@ -105,8 +118,9 @@ const handleLogin = async () => {
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  background-color: white;
-  color: #1f2937;
+  background-color: var(--google-btn-bg);
+  color: var(--google-btn-text);
+  border: 1px solid var(--border-color);
   font-weight: 600;
   font-size: 1rem;
   padding: 0.75rem 1.5rem;
@@ -117,7 +131,7 @@ const handleLogin = async () => {
 
 .google-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 12px var(--border-strong);
 }
 
 .google-btn:disabled {
@@ -136,7 +150,7 @@ const handleLogin = async () => {
   background: var(--q1-bg);
   padding: 0.5rem;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  border: 1px solid var(--danger-soft-border);
 }
 
 .notice-msg {
@@ -146,7 +160,7 @@ const handleLogin = async () => {
   background: var(--q3-bg);
   padding: 0.6rem 0.75rem;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  border: 1px solid var(--warning-soft-border);
 }
 
 /* Animations */
@@ -162,7 +176,7 @@ const handleLogin = async () => {
 }
 
 @keyframes pulse {
-  0% { box-shadow: 0 0 15px rgba(139, 92, 246, 0.3); }
-  100% { box-shadow: 0 0 30px rgba(139, 92, 246, 0.7); }
+  0% { box-shadow: 0 0 12px var(--accent-soft-border); }
+  100% { box-shadow: var(--shadow-accent); }
 }
 </style>

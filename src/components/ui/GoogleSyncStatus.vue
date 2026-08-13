@@ -55,11 +55,11 @@ const onClick = () => {
 .sync-status--off {
   cursor: pointer;
   color: var(--q3-color);
-  border-color: rgba(245, 158, 11, 0.45);
+  border-color: var(--warning-soft-border);
   background: var(--q3-bg);
 }
 
-.sync-status--off:hover { background: rgba(245, 158, 11, 0.15); }
+.sync-status--off:hover { background: var(--warning-soft-bg); }
 
 .sync-dot {
   width: 7px;
@@ -69,7 +69,7 @@ const onClick = () => {
   flex-shrink: 0;
 }
 
-.sync-status--ok .sync-dot { background: #10b981; }
+.sync-status--ok .sync-dot { background: var(--success-color); }
 .sync-status--renewing .sync-dot {
   background: var(--accent-primary);
   animation: sync-pulse 1.1s ease-in-out infinite;
