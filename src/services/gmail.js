@@ -1,6 +1,7 @@
-export async function sendTaskNotificationEmail(taskData, contactData, token) {
-  if (!token) throw new Error("No hay token de Google disponible")
+import { googleFetch } from './google/apiClient'
 
+// La autenticación (obtención y renovación del token) la gestiona googleFetch.
+export async function sendTaskNotificationEmail(taskData, contactData) {
   const subject = `Nueva Tarea Asignada: ${taskData.titulo}`
   
   // Construir el enlace para añadir a Google Calendar
@@ -71,22 +72,11 @@ export async function sendTaskNotificationEmail(taskData, contactData, token) {
     .replace(/\//g, '_')
     .replace(/=+$/, '')
 
-  const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+  const response = await googleFetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      raw: base64EncodedEmail
-    })
-  })
-
-  if (!response.ok) {
-    const errorData = await response.json()
-    console.error("Error al enviar email (Gmail API):", errorData)
-    throw new Error("Fallo en la API de Gmail")
-  }
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ raw: base64EncodedEmail })
+  }, { apiName: 'Gmail' })
 
   return await response.json()
 }

@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { auth } from '../services/firebase/config'
-import { onAuthStateChanged } from 'firebase/auth'
+import { waitForAuthReady } from '../composables/useAuth'
 import DashboardView from '../views/DashboardView.vue'
 import LoginView from '../views/LoginView.vue'
 import CalendarView from '../views/CalendarView.vue'
@@ -50,31 +49,22 @@ const router = createRouter({
   ]
 })
 
-// Navigation Guard para proteger rutas
-const getCurrentUser = () => {
-  return new Promise((resolve, reject) => {
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      (user) => {
-        unsubscribe()
-        resolve(user)
-      },
-      reject
-    )
-  })
-}
-
-router.beforeEach(async (to, from) => {
+// Navigation Guard para proteger rutas.
+// Reutiliza el observador global de useAuth en lugar de suscribirse a Firebase
+// en cada navegación (antes se creaba un listener nuevo por cada cambio de ruta).
+router.beforeEach(async (to) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const requiresGuest = to.matched.some(record => record.meta.requiresGuest)
-  const currentUser = await getCurrentUser()
+  const currentUser = await waitForAuthReady()
 
   if (requiresAuth && !currentUser) {
-    return '/login'
-  } else if (requiresGuest && currentUser) {
+    // Guardamos el destino para volver a él tras iniciar sesión
+    return { path: '/login', query: to.fullPath !== '/' ? { redirect: to.fullPath } : {} }
+  }
+  if (requiresGuest && currentUser) {
     return '/'
   }
-  
+
   // No retornar nada equivale a permitir la navegación
 })
 

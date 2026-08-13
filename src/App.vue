@@ -1,13 +1,38 @@
 <script setup>
+import { watch } from 'vue'
 import { useAuth } from './composables/useAuth'
 import { useFilters } from './composables/useFilters'
 import { useProjects } from './composables/useProjects'
-import { useRoute } from 'vue-router'
+import { useContacts } from './composables/useContacts'
+import { useRoute, useRouter } from 'vue-router'
+import ToastHost from './components/ui/ToastHost.vue'
+import GoogleSyncStatus from './components/ui/GoogleSyncStatus.vue'
+import DateRangePicker from './components/ui/DateRangePicker.vue'
 
-const { user, logout } = useAuth()
-const { filterStatus, filterDateType, filterDateRange, filterProject, triggerNewTask } = useFilters()
+const { user, authReady, logout } = useAuth()
+const {
+  filterStatus,
+  filterProject,
+  filterContact,
+  filterDateType,
+  filterDateRange,
+  filterSingleDate,
+  triggerNewTask
+} = useFilters()
 const { projects } = useProjects()
+const { contacts } = useContacts()
 const route = useRoute()
+const router = useRouter()
+
+// Si la sesión se pierde en cualquier momento (caducidad, revocación, logout en
+// otra pestaña), sacamos al usuario de la vista protegida al instante en lugar
+// de dejarlo ante una pantalla que ya no puede cargar datos.
+watch(user, (currentUser) => {
+  if (!authReady.value) return
+  if (!currentUser && route.meta.requiresAuth) {
+    router.replace({ path: '/login', query: route.fullPath !== '/' ? { redirect: route.fullPath } : {} })
+  }
+})
 </script>
 
 <template>
@@ -28,6 +53,7 @@ const route = useRoute()
         
         <div class="header-actions">
           <div class="user-menu">
+            <GoogleSyncStatus />
             <img v-if="user.photoURL" :src="user.photoURL" alt="Avatar" class="user-avatar" />
             <div v-else class="avatar-placeholder"></div>
             <button @click="logout" class="logout-btn" title="Cerrar Sesión">
@@ -63,7 +89,17 @@ const route = useRoute()
             </div>
             
             <div class="filter-divider desktop-only"></div>
-            
+
+            <div class="filter-group">
+              <label>Responsable:</label>
+              <select v-model="filterContact" class="corp-select">
+                <option value="Todos">Todos</option>
+                <option v-for="c in contacts" :key="c.id" :value="c.id">{{ c.nombre }}</option>
+              </select>
+            </div>
+
+            <div class="filter-divider desktop-only"></div>
+
             <div class="filter-group">
               <label>Periodo:</label>
               <select v-model="filterDateType" class="corp-select">
@@ -71,14 +107,20 @@ const route = useRoute()
                 <option value="hoy">Hoy</option>
                 <option value="esta-semana">Esta semana</option>
                 <option value="este-mes">Este mes</option>
+                <option value="dia">Día concreto</option>
                 <option value="rango">Rango</option>
               </select>
             </div>
-            
-            <div v-if="filterDateType === 'rango'" class="filter-group range-group">
-              <input type="date" v-model="filterDateRange.start" class="corp-input" />
-              <span>-</span>
-              <input type="date" v-model="filterDateRange.end" class="corp-input" />
+
+            <div v-if="filterDateType === 'dia'" class="filter-group date-group">
+              <DateRangePicker mode="single" v-model:start="filterSingleDate" />
+            </div>
+
+            <div v-if="filterDateType === 'rango'" class="filter-group date-group">
+              <DateRangePicker
+                v-model:start="filterDateRange.start"
+                v-model:end="filterDateRange.end"
+              />
             </div>
           </div>
           
@@ -99,6 +141,8 @@ const route = useRoute()
         </transition>
       </router-view>
     </main>
+
+    <ToastHost />
   </div>
 </template>
 
@@ -222,22 +266,35 @@ const route = useRoute()
 .filters-bar {
   display: flex;
   gap: 1rem;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
 }
 
+/* En escritorio los filtros se reparten en varias líneas si no caben, en vez de
+   esconderse tras un scroll horizontal. Al aparecer los campos de fecha
+   (Rango / Día concreto) bajan a una segunda fila en bloque. */
 .filters-scroll {
   display: flex;
-  gap: 1.5rem;
+  flex-wrap: wrap;
+  column-gap: 1.25rem;
+  row-gap: 0.7rem;
   align-items: center;
-  overflow-x: auto;
+  /* Sin min-width:0 el contenedor se niega a encogerse por debajo de su
+     contenido y empuja al botón de "Nueva Tarea" fuera de la barra. */
+  min-width: 0;
+  flex: 1 1 auto;
+  scrollbar-width: none;
 }
 .filters-scroll::-webkit-scrollbar { display: none; }
 
+/* flex:0 0 auto es lo que evita que los filtros se aplasten unos contra otros
+   al aparecer los campos de fecha (Rango / Día concreto). Si pueden encogerse,
+   los <select> se comprimen hasta solaparse visualmente con sus etiquetas. */
 .filter-group {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex: 0 0 auto;
 }
 
 .filter-group label {
@@ -258,6 +315,13 @@ const route = useRoute()
   font-size: 0.85rem;
   outline: none;
   transition: border-color 0.2s;
+  flex: 0 0 auto;
+  max-width: 170px;
+}
+
+/* Nombres largos de proyecto o responsable se recortan en vez de estirar la barra */
+.corp-select {
+  text-overflow: ellipsis;
 }
 
 .corp-select:focus, .corp-input:focus {
@@ -268,10 +332,11 @@ const route = useRoute()
   width: 1px;
   height: 20px;
   background: var(--border-color);
+  flex: 0 0 auto;
 }
 
-.range-group span {
-  color: var(--text-secondary);
+.filter-actions {
+  flex: 0 0 auto;
 }
 
 /* FAB and Create Button */
@@ -365,10 +430,22 @@ const route = useRoute()
   .filters-bar {
     padding-bottom: 0.25rem;
   }
-  /* Los filtros también se desplazan horizontalmente (no se apilan en varias filas) */
+  /* En móvil no hay ancho para varias filas: se desplazan horizontalmente */
   .filters-scroll {
     flex-wrap: nowrap;
-    gap: 1rem;
+    overflow-x: auto;
+    column-gap: 0.9rem;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+
+  .filter-group label {
+    font-size: 0.68rem;
+  }
+
+  .corp-select, .corp-input {
+    max-width: 130px;
+    padding: 0.4rem 0.5rem;
   }
 
   .desktop-only { display: none; }

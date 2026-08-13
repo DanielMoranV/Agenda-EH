@@ -1,20 +1,57 @@
 // Servicio para interactuar con la API REST de Google Calendar v3
+//
+// La autenticación (obtención y renovación del token) la gestiona googleFetch:
+// estas funciones ya no reciben el token como parámetro.
+
+import { googleFetch, GoogleApiError } from './google/apiClient'
 
 const CALENDAR_API_BASE = 'https://www.googleapis.com/calendar/v3/calendars/primary/events'
+const API_NAME = 'Google Calendar'
 
-// Helpers para dar formato a las fechas (Google Calendar requiere formato RFC3339)
-const formatDateForGoogle = (dateString, isAllDay = true) => {
-  if (!dateString) return null
-  
-  if (isAllDay) {
-    // Evento de todo el día: formato YYYY-MM-DD
-    return { date: dateString }
-  } else {
-    // Evento con hora: formato datetime ISO
-    const date = new Date(dateString)
-    return { dateTime: date.toISOString() }
+// Zona horaria del navegador (ej. "America/Lima"). Se la mandamos a Google
+// junto a la hora "desnuda" para que no la interprete como UTC.
+const TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+
+const DEFAULT_DURATION_MIN = 60
+
+const pad = (n) => String(n).padStart(2, '0')
+
+/** Suma días a un "YYYY-MM-DD" trabajando siempre en horario local. */
+const addDays = (dateStr, days) => {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const dt = new Date(y, m - 1, d)
+  dt.setDate(dt.getDate() + days)
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`
+}
+
+/** Suma minutos a un par fecha+hora y devuelve el par resultante. */
+const addMinutes = (dateStr, timeStr, minutes) => {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const [hh, mm] = timeStr.split(':').map(Number)
+  const dt = new Date(y, m - 1, d, hh, mm)
+  dt.setMinutes(dt.getMinutes() + minutes)
+  return {
+    date: `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`,
+    time: `${pad(dt.getHours())}:${pad(dt.getMinutes())}`
   }
 }
+
+/** Compara dos pares fecha+hora. Devuelve <0, 0 o >0. */
+const compare = (a, b) => (`${a.date}T${a.time}`).localeCompare(`${b.date}T${b.time}`)
+
+/**
+ * Evento con hora concreta.
+ * Enviamos la hora local "desnuda" (sin Z ni offset) + el campo timeZone: es la
+ * forma que recomienda Google y evita el desfase que produce toISOString(),
+ * que convierte a UTC y hacía aparecer el evento a otra hora.
+ */
+const timedSlot = (dateStr, timeStr) => ({
+  dateTime: `${dateStr}T${timeStr}:00`,
+  timeZone: TIME_ZONE
+})
+
+/** Evento de todo el día: Google usa YYYY-MM-DD y fin EXCLUSIVO. */
+const allDaySlot = (dateStr) => ({ date: dateStr })
 
 // Arma el cuerpo (payload) que se enviará a Google
 const buildEventPayload = (task) => {
@@ -35,83 +72,87 @@ const buildEventPayload = (task) => {
   // Si tenemos fecha de inicio, la usamos, sino usamos la de vencimiento como inicio y fin
   const startDate = task.fecha_inicio || task.fecha_vencimiento
   const endDate = task.fecha_vencimiento || task.fecha_inicio
+  if (!startDate) return payload
 
-  if (startDate) {
-    payload.start = formatDateForGoogle(startDate)
-    // Para eventos de todo el día, Google requiere que la fecha de fin sea el día EXCLUSIVO (el día siguiente)
-    if (endDate) {
-      const endD = new Date(endDate)
-      endD.setDate(endD.getDate() + 1)
-      payload.end = formatDateForGoogle(endD.toISOString().split('T')[0])
-    } else {
-      payload.end = payload.start
-    }
+  // ¿La tarea lleva hora? Necesita el flag y al menos una de las dos horas.
+  const startTime = task.hora_inicio || task.hora_vencimiento
+  const isTimed = Boolean(task.con_hora && startTime)
+
+  if (!isTimed) {
+    // --- Evento de todo el día ---
+    payload.start = allDaySlot(startDate)
+    // El fin es exclusivo: para que el evento cubra el día de vencimiento
+    // hay que enviar el día siguiente.
+    payload.end = allDaySlot(addDays(endDate, 1))
+    return payload
   }
+
+  // --- Evento con rango de horas ---
+  const from = { date: startDate, time: startTime }
+
+  let to
+  if (task.hora_vencimiento) {
+    to = { date: endDate, time: task.hora_vencimiento }
+  } else {
+    // Sin hora de fin: una hora de duración por defecto
+    to = addMinutes(from.date, from.time, DEFAULT_DURATION_MIN)
+  }
+
+  // Google rechaza (o normaliza mal) los eventos cuyo fin no es posterior al
+  // inicio. Puede pasar si el usuario puso 14:00 - 14:00, o el fin antes.
+  if (compare(to, from) <= 0) {
+    to = addMinutes(from.date, from.time, DEFAULT_DURATION_MIN)
+  }
+
+  payload.start = timedSlot(from.date, from.time)
+  payload.end = timedSlot(to.date, to.time)
 
   return payload
 }
 
-export const createCalendarEvent = async (task, token) => {
-  if (!token || (!task.fecha_inicio && !task.fecha_vencimiento)) return null
+// Exportado solo para pruebas del formato del payload
+export { buildEventPayload }
 
-  const payload = buildEventPayload(task)
-  
-  const response = await fetch(CALENDAR_API_BASE, {
+export const createCalendarEvent = async (task) => {
+  if (!task.fecha_inicio && !task.fecha_vencimiento) return null
+
+  const response = await googleFetch(CALENDAR_API_BASE, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  })
-
-  if (!response.ok) {
-    console.error("Error de Google Calendar:", await response.text())
-    throw new Error('Fallo al crear evento en Calendar')
-  }
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(buildEventPayload(task))
+  }, { apiName: API_NAME })
 
   const data = await response.json()
   return data.id // Devuelve el eventId de Google
 }
 
-export const updateCalendarEvent = async (eventId, task, token) => {
-  if (!token || !eventId) throw new Error("Falta token o ID de evento para actualizar en Calendar")
+export const updateCalendarEvent = async (eventId, task) => {
+  if (!eventId) throw new GoogleApiError('Falta el ID del evento para actualizar en Calendar', { apiName: API_NAME })
 
-  const payload = buildEventPayload(task)
-  
-  const response = await fetch(`${CALENDAR_API_BASE}/${eventId}`, {
+  // 404/410: el evento fue borrado desde Google. Lo tratamos como "hay que recrearlo"
+  // en lugar de como un fallo, para que la tarea no quede desincronizada para siempre.
+  const response = await googleFetch(`${CALENDAR_API_BASE}/${eventId}`, {
     method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(buildEventPayload(task))
+  }, { apiName: API_NAME, allowStatuses: [404, 410] })
 
-  if (!response.ok) {
-    const errText = await response.text()
-    console.error("Error actualizando evento de Calendar:", errText)
-    throw new Error(`Fallo al actualizar en Google Calendar. ¿Sesión expirada?`)
+  if (response.status === 404 || response.status === 410) {
+    const newId = await createCalendarEvent(task)
+    return { recreated: true, eventId: newId }
   }
+
+  return { recreated: false, eventId }
 }
 
-export const deleteCalendarEvent = async (eventId, token) => {
-  if (!token || !eventId) throw new Error("Falta token o ID de evento para eliminar en Calendar")
-  
-  const response = await fetch(`${CALENDAR_API_BASE}/${eventId}`, {
-    method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  })
+export const deleteCalendarEvent = async (eventId) => {
+  if (!eventId) return
 
-  if (!response.ok) {
-    if (response.status === 404 || response.status === 410) {
-      console.warn("El evento ya no existe en Google Calendar. Se omitirá el borrado allí.")
-      return
-    }
-    const errText = await response.text()
-    console.error("Error eliminando evento de Calendar:", errText)
-    throw new Error(`Fallo al eliminar en Google Calendar. ¿Sesión expirada?`)
+  const response = await googleFetch(`${CALENDAR_API_BASE}/${eventId}`, {
+    method: 'DELETE'
+  }, { apiName: API_NAME, allowStatuses: [404, 410] })
+
+  if (response.status === 404 || response.status === 410) {
+    console.warn('El evento ya no existe en Google Calendar. Se omitirá el borrado allí.')
   }
 }

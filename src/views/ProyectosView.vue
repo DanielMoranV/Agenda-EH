@@ -2,9 +2,12 @@
 import { ref } from 'vue'
 import { useProjects } from '../composables/useProjects'
 import { useContacts } from '../composables/useContacts'
+import { useNotifications } from '../composables/useNotifications'
+import { describeFirestoreError } from '../services/firebase/errors'
 
 const { projects, addProject, updateProject, removeProject, loadingProjects } = useProjects()
 const { contacts } = useContacts()
+const { notifySuccess, notifyError, notifyWarning } = useNotifications()
 
 const isModalOpen = ref(false)
 const isEditing = ref(false)
@@ -32,19 +35,21 @@ const closeModal = () => {
 
 const saveProject = async () => {
   if (!formData.value.nombre.trim()) {
-    alert("El nombre del proyecto es obligatorio.")
+    notifyWarning('Falta el nombre', 'El nombre del proyecto es obligatorio.')
     return
   }
-  
+
+  const wasEditing = isEditing.value
   try {
-    if (isEditing.value) {
+    if (wasEditing) {
       await updateProject(currentProjectId.value, formData.value)
     } else {
       await addProject(formData.value)
     }
     closeModal()
+    notifySuccess(wasEditing ? 'Proyecto actualizado' : 'Proyecto creado', formData.value.nombre)
   } catch (err) {
-    alert("Error al guardar el proyecto.")
+    notifyError('No se pudo guardar el proyecto', describeFirestoreError(err))
   }
 }
 
@@ -52,8 +57,9 @@ const deleteProject = async (id) => {
   if (confirm("¿Estás seguro de eliminar este proyecto?")) {
     try {
       await removeProject(id)
+      notifySuccess('Proyecto eliminado')
     } catch (err) {
-      alert("Error al eliminar.")
+      notifyError('No se pudo eliminar el proyecto', describeFirestoreError(err))
     }
   }
 }

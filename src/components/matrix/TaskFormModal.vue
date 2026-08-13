@@ -14,6 +14,12 @@ const props = defineProps({
   contacts: {
     type: Array,
     default: () => []
+  },
+  // Valores iniciales para una tarea NUEVA (p. ej. el proyecto activo en los
+  // filtros). No se aplican al editar: ahí manda la tarea existente.
+  defaults: {
+    type: Object,
+    default: () => ({})
   }
 })
 
@@ -44,7 +50,7 @@ watch(() => props.isOpen, (newVal) => {
     if (props.task) {
       formData.value = { ...props.task }
     } else {
-      formData.value = { ...defaultTask }
+      formData.value = { ...defaultTask, ...props.defaults }
     }
   }
 })

@@ -1,7 +1,18 @@
 <script setup>
 import { useAuth } from '../composables/useAuth'
+import { useRoute, useRouter } from 'vue-router'
 
-const { loginWithGoogle, loading, error } = useAuth()
+const { loginWithGoogle, loading, error, sessionEndReason } = useAuth()
+const route = useRoute()
+const router = useRouter()
+
+const handleLogin = async () => {
+  const signedIn = await loginWithGoogle()
+  if (signedIn) {
+    // Volvemos a la vista donde estaba el usuario antes de que caducara la sesión
+    router.replace(route.query.redirect || '/')
+  }
+}
 </script>
 
 <template>
@@ -14,8 +25,11 @@ const { loginWithGoogle, loading, error } = useAuth()
       </div>
 
       <div class="auth-section">
-        <button 
-          @click="loginWithGoogle" 
+        <!-- Explica POR QUÉ está aquí: antes la app le devolvía al login sin decir nada -->
+        <p v-if="sessionEndReason && !error" class="notice-msg">{{ sessionEndReason }}</p>
+
+        <button
+          @click="handleLogin"
           :disabled="loading"
           class="google-btn"
         >
@@ -122,6 +136,17 @@ const { loginWithGoogle, loading, error } = useAuth()
   background: var(--q1-bg);
   padding: 0.5rem;
   border-radius: var(--radius-sm);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.notice-msg {
+  color: var(--q3-color);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  background: var(--q3-bg);
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
 /* Animations */

@@ -2,11 +2,11 @@
 import { computed, ref } from 'vue'
 import { useTasks } from '../composables/useTasks'
 import { useProjects } from '../composables/useProjects'
-import { useFilters } from '../composables/useFilters'
+import { useFilters, parseDateTime } from '../composables/useFilters'
 
 const { tasks } = useTasks()
 const { projects } = useProjects()
-const { filterStatus, filterDateType, filterDateRange, filterProject } = useFilters()
+const { filterDateType, filterDateRange, filterSingleDate, matchesFilters } = useFilters()
 
 // --- Constantes de tiempo y layout ---
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -21,6 +21,7 @@ const viewMode = computed(() => {
   if (userViewMode.value !== 'auto') return userViewMode.value
   // Auto: si el filtro es de un solo día, mostramos las 24 horas
   if (filterDateType.value === 'hoy') return 'hours'
+  if (filterDateType.value === 'dia' && filterSingleDate.value) return 'hours'
   if (
     filterDateType.value === 'rango' &&
     filterDateRange.value.start &&
@@ -29,66 +30,14 @@ const viewMode = computed(() => {
   return 'days'
 })
 
-// Construye un Date local a partir de "YYYY-MM-DD" y "HH:MM" (evita el desfase de zona horaria de new Date("...T..."))
-const parseDateTime = (dateStr, timeStr) => {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  let h = 0, min = 0
-  if (timeStr) {
-    const [hh, mm] = timeStr.split(':').map(Number)
-    h = hh || 0
-    min = mm || 0
-  }
-  return new Date(y, m - 1, d, h, min, 0, 0)
-}
-
 // Medianoche (00:00) del día de la fecha dada
 const startOfDay = (date) =>
   new Date(date.getFullYear(), date.getMonth(), date.getDate())
 
 // Filtramos tareas que tengan al menos una fecha y calculamos su rango real
 const ganttTasks = computed(() => {
-  const filtered = tasks.value.filter(task => {
-    if (filterStatus.value !== 'Todos' && task.estado !== filterStatus.value) return false
-    if (filterProject.value !== 'Todos' && task.proyecto_id !== filterProject.value) return false
-
-    if (filterDateType.value === 'todos') return true
-    if (!task.fecha_inicio && !task.fecha_vencimiento) return false
-
-    let startBound, endBound
-    const now = new Date()
-    if (filterDateType.value === 'hoy') {
-      startBound = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-      endBound = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
-    } else if (filterDateType.value === 'esta-semana') {
-      const day = now.getDay()
-      const diff = now.getDate() - day + (day === 0 ? -6 : 1)
-      startBound = new Date(now.getFullYear(), now.getMonth(), diff)
-      endBound = new Date(startBound)
-      endBound.setDate(startBound.getDate() + 6)
-      endBound.setHours(23, 59, 59)
-    } else if (filterDateType.value === 'este-mes') {
-      startBound = new Date(now.getFullYear(), now.getMonth(), 1)
-      endBound = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
-    } else if (filterDateType.value === 'rango') {
-      if (!filterDateRange.value.start || !filterDateRange.value.end) return true
-      startBound = parseDateTime(filterDateRange.value.start, '00:00')
-      endBound = parseDateTime(filterDateRange.value.end, '23:59')
-      endBound.setSeconds(59)
-    }
-
-    const tStart = task.fecha_inicio
-      ? parseDateTime(task.fecha_inicio, task.con_hora ? task.hora_inicio : null)
-      : null
-    const tEnd = task.fecha_vencimiento
-      ? parseDateTime(task.fecha_vencimiento, task.con_hora ? task.hora_vencimiento : null)
-      : null
-
-    const isStartInRange = tStart && tStart >= startBound && tStart <= endBound
-    const isEndInRange = tEnd && tEnd >= startBound && tEnd <= endBound
-    return isStartInRange || isEndInRange
-  })
-
-  return filtered
+  // Filtrado compartido con la vista Matriz (ver useFilters.matchesFilters)
+  return tasks.value.filter(matchesFilters)
     .filter(t => t.fecha_inicio || t.fecha_vencimiento)
     .map(t => {
       const startStr = t.fecha_inicio || t.fecha_vencimiento
@@ -156,7 +105,9 @@ const calendarRange = computed(() => {
   if (viewMode.value === 'hours') {
     // --- Modo 24 Horas: un día completo, 24 columnas de 1 hora ---
     let baseDate = new Date()
-    if (filterDateType.value === 'rango' && filterDateRange.value.start) {
+    if (filterDateType.value === 'dia' && filterSingleDate.value) {
+      baseDate = parseDateTime(filterSingleDate.value, '00:00')
+    } else if (filterDateType.value === 'rango' && filterDateRange.value.start) {
       baseDate = parseDateTime(filterDateRange.value.start, '00:00')
     } else if (ganttTasks.value.length > 0 && filterDateType.value !== 'hoy') {
       // Si el usuario forzó "horas" sin ser hoy, centramos en la primera tarea

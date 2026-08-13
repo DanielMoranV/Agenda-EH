@@ -1,6 +1,8 @@
 import { ref, onUnmounted, watch } from 'vue'
 import { db } from '../services/firebase/config'
 import { useAuth } from './useAuth'
+import { notify } from './useNotifications'
+import { describeFirestoreError } from '../services/firebase/errors'
 import { 
   collection, 
   query, 
@@ -42,8 +44,15 @@ export function useProjects() {
       loadingProjects.value = false
     }, (err) => {
       console.error("Error obteniendo proyectos de Firestore:", err)
-      error.value = err.message
+      error.value = describeFirestoreError(err)
       loadingProjects.value = false
+      notify({
+        type: 'error',
+        key: 'projects-stream-error',
+        title: 'No se pudieron cargar los proyectos',
+        message: error.value,
+        duration: 0
+      })
     })
   }
 

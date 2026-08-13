@@ -6,12 +6,14 @@ import { useTasks } from '../composables/useTasks'
 import { useFilters } from '../composables/useFilters'
 import { useProjects } from '../composables/useProjects'
 import { useContacts } from '../composables/useContacts'
+import { useNotifications } from '../composables/useNotifications'
 
 // Extraemos estado y métodos de Firestore
 const { tasks, addTask, updateTask, removeTask, loadingTasks } = useTasks()
-const { filterStatus, filterDateType, filterDateRange, filterProject, triggerNewTask } = useFilters()
+const { filterProject, filterContact, triggerNewTask, matchesFilters } = useFilters()
 const { projects } = useProjects()
 const { contacts } = useContacts()
+const { notifySuccess, notifyError } = useNotifications()
 
 // Escuchar evento de crear tarea desde la barra superior (App.vue)
 watch(triggerNewTask, (val) => {
@@ -25,53 +27,9 @@ watch(triggerNewTask, (val) => {
 const mobileTab = ref('q1') // Para la navegación móvil
 
 const filteredTasks = computed(() => {
-  const result = tasks.value.filter(task => {
-    // 1. Filtro por Estado
-    if (filterStatus.value !== 'Todos' && task.estado !== filterStatus.value) {
-      return false
-    }
-
-    // 1.5 Filtro por Proyecto
-    if (filterProject.value !== 'Todos' && task.proyecto_id !== filterProject.value) {
-      return false
-    }
-
-    // 2. Filtro por Fecha
-    if (filterDateType.value === 'todos') return true
-
-    // Si la tarea no tiene fechas, no entra en los filtros de periodo específicos
-    if (!task.fecha_inicio && !task.fecha_vencimiento) return false
-
-    let startBound, endBound;
-    const now = new Date()
-
-    if (filterDateType.value === 'hoy') {
-      startBound = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-      endBound = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
-    } else if (filterDateType.value === 'esta-semana') {
-      const day = now.getDay()
-      const diff = now.getDate() - day + (day === 0 ? -6 : 1) // Lunes como inicio
-      startBound = new Date(now.getFullYear(), now.getMonth(), diff)
-      endBound = new Date(startBound)
-      endBound.setDate(startBound.getDate() + 6)
-      endBound.setHours(23, 59, 59)
-    } else if (filterDateType.value === 'este-mes') {
-      startBound = new Date(now.getFullYear(), now.getMonth(), 1)
-      endBound = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
-    } else if (filterDateType.value === 'rango') {
-      if (!filterDateRange.value.start || !filterDateRange.value.end) return true
-      startBound = new Date(filterDateRange.value.start + 'T00:00:00')
-      endBound = new Date(filterDateRange.value.end + 'T23:59:59')
-    }
-
-    const tStart = task.fecha_inicio ? new Date(task.fecha_inicio + (task.con_hora && task.hora_inicio ? `T${task.hora_inicio}:00` : 'T00:00:00')) : null
-    const tEnd = task.fecha_vencimiento ? new Date(task.fecha_vencimiento + (task.con_hora && task.hora_vencimiento ? `T${task.hora_vencimiento}:00` : 'T00:00:00')) : null
-
-    const isStartInRange = tStart && tStart >= startBound && tStart <= endBound
-    const isEndInRange = tEnd && tEnd >= startBound && tEnd <= endBound
-
-    return isStartInRange || isEndInRange
-  })
+  // La lógica de filtrado vive en useFilters para que Matriz y Gantt no puedan
+  // divergir (antes estaba duplicada en ambas vistas).
+  const result = tasks.value.filter(matchesFilters)
 
   // Ordenar por fecha y hora
   return result.sort((a, b) => {
@@ -103,6 +61,15 @@ const q4Tasks = computed(() => filteredTasks.value.filter(t => !t.es_urgente && 
 const isModalOpen = ref(false)
 const taskToEdit = ref(null)
 
+// Si hay un proyecto o un responsable concretos en los filtros, la tarea nueva
+// ya nace asignada a ellos: es el contexto en el que el usuario está trabajando.
+const newTaskDefaults = computed(() => {
+  const defaults = {}
+  if (filterProject.value !== 'Todos') defaults.proyecto_id = filterProject.value
+  if (filterContact.value !== 'Todos') defaults.contacto_id = filterContact.value
+  return defaults
+})
+
 const openCreateModal = () => {
   taskToEdit.value = null
   isModalOpen.value = true
@@ -114,14 +81,16 @@ const openEditModal = (task) => {
 }
 
 const saveTask = async (taskData) => {
+  const isEdit = Boolean(taskToEdit.value?.id)
   try {
-    if (taskToEdit.value && taskToEdit.value.id) {
+    if (isEdit) {
       await updateTask(taskToEdit.value.id, taskData)
     } else {
       await addTask(taskData)
     }
+    notifySuccess(isEdit ? 'Tarea actualizada' : 'Tarea creada', taskData.titulo)
   } catch (err) {
-    alert("Hubo un error al guardar la tarea.")
+    notifyError('No se pudo guardar la tarea', err.message)
   }
 }
 
@@ -129,8 +98,9 @@ const deleteTask = async (task) => {
   if(confirm(`¿Eliminar la tarea "${task.titulo}"?`)) {
     try {
       await removeTask(task.id)
+      notifySuccess('Tarea eliminada', task.titulo)
     } catch(err) {
-      alert("Error al eliminar la tarea: " + err.message)
+      notifyError('No se pudo eliminar la tarea', err.message)
     }
   }
 }
@@ -140,7 +110,7 @@ const toggleTaskStatus = async (task) => {
   try {
     await updateTask(task.id, { estado: newStatus })
   } catch (err) {
-    console.error("Error toggle status", err)
+    notifyError('No se pudo cambiar el estado', err.message)
   }
 }
 </script>
@@ -229,6 +199,7 @@ const toggleTaskStatus = async (task) => {
       :task="taskToEdit"
       :projects="projects"
       :contacts="contacts"
+      :defaults="newTaskDefaults"
       @close="isModalOpen = false"
       @save="saveTask"
     />

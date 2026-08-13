@@ -5,8 +5,10 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import { useTasks } from '../composables/useTasks'
+import { useNotifications } from '../composables/useNotifications'
 
 const { tasks, updateTask } = useTasks()
+const { notifyError } = useNotifications()
 
 // Configuración básica del calendario
 const calendarOptions = ref({
@@ -81,9 +83,10 @@ const calendarOptions = ref({
       // Esto actualizará Firestore y automáticamente tu Google Calendar!
       await updateTask(taskId, updatePayload)
     } catch (e) {
-      console.error("Error al mover la tarea:", e)
-      info.revert() // Revertir visualmente si hubo error en Firestore/Google
-      alert("Hubo un error al sincronizar con tu calendario.")
+      // Solo revertimos si falló Firestore: los fallos de Google ya no se
+      // propagan hasta aquí (se avisan por notificación y se reintentan luego).
+      info.revert()
+      notifyError('No se pudo mover la tarea', e.message)
     }
   }
 })

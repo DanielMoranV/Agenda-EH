@@ -1,8 +1,11 @@
 <script setup>
 import { ref } from 'vue'
 import { useContacts } from '../composables/useContacts'
+import { useNotifications } from '../composables/useNotifications'
+import { describeFirestoreError } from '../services/firebase/errors'
 
 const { contacts, addContact, updateContact, removeContact, loadingContacts } = useContacts()
+const { notifySuccess, notifyError, notifyWarning } = useNotifications()
 
 const isModalOpen = ref(false)
 const isEditing = ref(false)
@@ -30,19 +33,21 @@ const closeModal = () => {
 
 const saveContact = async () => {
   if (!formData.value.nombre.trim() || !formData.value.email.trim()) {
-    alert("El nombre y el correo son obligatorios.")
+    notifyWarning('Faltan datos', 'El nombre y el correo son obligatorios.')
     return
   }
-  
+
+  const wasEditing = isEditing.value
   try {
-    if (isEditing.value) {
+    if (wasEditing) {
       await updateContact(currentContactId.value, formData.value)
     } else {
       await addContact(formData.value)
     }
     closeModal()
+    notifySuccess(wasEditing ? 'Contacto actualizado' : 'Contacto creado', formData.value.nombre)
   } catch (err) {
-    alert("Error al guardar el contacto.")
+    notifyError('No se pudo guardar el contacto', describeFirestoreError(err))
   }
 }
 
@@ -50,8 +55,9 @@ const deleteContact = async (id) => {
   if (confirm("¿Estás seguro de eliminar este contacto?")) {
     try {
       await removeContact(id)
+      notifySuccess('Contacto eliminado')
     } catch (err) {
-      alert("Error al eliminar.")
+      notifyError('No se pudo eliminar el contacto', describeFirestoreError(err))
     }
   }
 }

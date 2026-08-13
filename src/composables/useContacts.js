@@ -1,6 +1,8 @@
 import { ref, onUnmounted, watch } from 'vue'
 import { db } from '../services/firebase/config'
 import { useAuth } from './useAuth'
+import { notify } from './useNotifications'
+import { describeFirestoreError } from '../services/firebase/errors'
 import { 
   collection, 
   query, 
@@ -42,8 +44,15 @@ export function useContacts() {
       loadingContacts.value = false
     }, (err) => {
       console.error("Error obteniendo contactos de Firestore:", err)
-      error.value = err.message
+      error.value = describeFirestoreError(err)
       loadingContacts.value = false
+      notify({
+        type: 'error',
+        key: 'contacts-stream-error',
+        title: 'No se pudieron cargar los contactos',
+        message: error.value,
+        duration: 0
+      })
     })
   }
 
