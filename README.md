@@ -15,6 +15,7 @@ Las tareas se guardan en Firestore y se reflejan en tiempo real en todas las vis
 - [Estructura del proyecto](#estructura-del-proyecto)
 - [Modelo de datos](#modelo-de-datos)
 - [Cómo funciona la sesión de Google](#cómo-funciona-la-sesión-de-google)
+- [Temas claro y oscuro](#temas-claro-y-oscuro)
 - [Despliegue](#despliegue)
 - [Notas de desarrollo](#notas-de-desarrollo)
 
@@ -125,9 +126,11 @@ src/
 │   └── ui/
 │       ├── DateRangePicker.vue   Calendario de rango / día concreto
 │       ├── GoogleSyncStatus.vue  Indicador de conexión con Google
+│       ├── ThemeToggle.vue       Conmutador claro / oscuro / sistema
 │       └── ToastHost.vue         Notificaciones
 ├── composables/
 │   ├── useAuth.js                Sesión de Firebase (singleton global)
+│   ├── useTheme.js               Tema activo y lectura de la paleta
 │   ├── useGoogleToken.js         Ciclo de vida del token OAuth de Google
 │   ├── useFilters.js             Estado de filtros + matchesFilters()
 │   ├── useTasks.js               CRUD de tareas y sincronización
@@ -222,6 +225,50 @@ firebase deploy --only firestore:rules
 ```
 
 Antes del primer despliegue, añade el dominio de hosting a los **Orígenes de JavaScript autorizados** del Client ID de OAuth y a los **dominios autorizados** de Firebase Authentication.
+
+---
+
+## Temas claro y oscuro
+
+Toda la paleta vive en `src/assets/styles/main.css` como variables CSS, definidas
+por duplicado para `:root[data-theme='light']` y `:root[data-theme='dark']`.
+Son tonos corporativos de baja saturación: neutros con matiz azul pizarra y
+acentos apagados (azul acero, terracota, ocre, verde salvia).
+
+El tema se resuelve así:
+
+1. Un script inline en `index.html` fija `data-theme` en `<html>` **antes** del
+   primer pintado, leyendo `localStorage.theme` o la preferencia del sistema.
+   Sin esto se vería un destello del tema equivocado al cargar.
+2. `useTheme.js` toma el relevo: expone la preferencia (`light` / `dark` /
+   `system`), la persiste, sigue los cambios del sistema y sincroniza pestañas.
+3. `ThemeToggle.vue` cicla entre los tres modos desde la cabecera.
+
+**Regla al escribir estilos: ningún color literal en un componente.** Si falta un
+matiz, se añade el token en `main.css` en **los dos temas**. Los componentes solo
+usan `var(--token)`.
+
+Tokens principales: superficies (`--bg-base`, `--bg-surface`, `--bg-elevated`,
+`--bg-inset`, `--bg-header`), texto (`--text-primary/secondary/muted/inverse`),
+bordes (`--border-color`, `--border-strong`, `--border-focus`), acento
+(`--accent-primary`, `--accent-text`, `--accent-soft-bg`), semánticos
+(`--success/warning/danger/info-color` con sus variantes `-soft-bg` y
+`-soft-border`), cuadrantes (`--q1..q4-color` / `-bg`) y efectos
+(`--overlay-bg`, `--hover-wash`, `--stripe-wash`, `--shadow-sm/md/lg`).
+
+Dos casos especiales que conviene conocer:
+
+- **`--on-color-text`** — texto sobre rellenos de color (barras del Gantt,
+  eventos del calendario). Se invierte con el tema: blanco en claro, porque los
+  rellenos son colores oscuros; casi negro en oscuro, porque allí son pasteles
+  claros. Fijarlo a blanco siempre haría ilegible el modo oscuro.
+- **Colores pintados desde JS** — FullCalendar aplica estilos en línea y necesita
+  valores resueltos, no `var(...)`. `useTheme().readThemeColors([...])` los lee
+  del CSS y se recalcula al cambiar de tema, de modo que `main.css` sigue siendo
+  la única fuente de verdad.
+
+Los 30 pares de color relevantes cumplen el contraste mínimo de WCAG AA (4.5:1
+en texto normal, 3:1 en texto grande e indicadores) en ambos temas.
 
 ---
 
