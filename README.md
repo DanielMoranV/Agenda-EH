@@ -1,5 +1,11 @@
 # Agenda EH — Matriz de Eisenhower
 
+![Vue 3](https://img.shields.io/badge/Vue-3.5-42b883?logo=vue.js&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-Auth%20%7C%20Firestore%20%7C%20Hosting-FFCA28?logo=firebase&logoColor=white)
+![Estado](https://img.shields.io/badge/estado-en%20producción-brightgreen)
+![Licencia](https://img.shields.io/badge/uso-privado-lightgrey)
+
 Agenda de gestión de tareas que organiza el trabajo según la **Matriz de Eisenhower** (urgente × importante) y lo mantiene sincronizado con **Google Calendar** y **Gmail**.
 
 Las tareas se guardan en Firestore y se reflejan en tiempo real en todas las vistas y pestañas abiertas. Si una tarea tiene fechas, se crea automáticamente el evento correspondiente en el calendario del usuario; si tiene un responsable asignado, se le puede avisar por correo.
@@ -8,16 +14,42 @@ Las tareas se guardan en Firestore y se reflejan en tiempo real en todas las vis
 
 ## Índice
 
+- [Estado del proyecto](#estado-del-proyecto)
 - [Funcionalidades](#funcionalidades)
 - [Stack](#stack)
+- [Arquitectura](#arquitectura)
 - [Puesta en marcha](#puesta-en-marcha)
 - [Configuración de Google Cloud](#configuración-de-google-cloud)
 - [Estructura del proyecto](#estructura-del-proyecto)
 - [Modelo de datos](#modelo-de-datos)
 - [Cómo funciona la sesión de Google](#cómo-funciona-la-sesión-de-google)
+- [Seguridad y manejo de credenciales](#seguridad-y-manejo-de-credenciales)
 - [Temas claro y oscuro](#temas-claro-y-oscuro)
 - [Despliegue](#despliegue)
 - [Notas de desarrollo](#notas-de-desarrollo)
+
+---
+
+## Estado del proyecto
+
+El desarrollo siguió las 5 fases del [documento técnico](docs/Documento_Tecnico_Agenda_Matriz_Eisenhower.pdf) y del [plan de trabajo](docs/plan_de_trabajo.md). Estado real a día de hoy:
+
+| Fase | Alcance | Estado |
+|---|---|---|
+| 1. PoC Calendar API | OAuth 2.0, creación de eventos, recordatorios | ✅ Completa |
+| 2. Arquitectura base | Vue 3 + Vite, Firebase (Auth/Firestore/Hosting), estructura de carpetas | ✅ Completa |
+| 3. UI/UX | Login, Matriz 2×2 responsive, tarjetas, modales | ✅ Completa |
+| 4. Integración | CRUD en tiempo real (`onSnapshot`), clasificación dinámica por cuadrante, sync bidireccional con Calendar | ✅ Completa |
+| 5. Seguridad y despliegue | Firestore Rules por `user_id`, build de producción, Firebase Hosting | ✅ Completa |
+
+Sobre el alcance original del plan, ya en producción:
+
+- **5 vistas completas**: Matriz (dashboard), Calendario, Gantt, Proyectos y Contactos — el plan solo contemplaba matriz + calendario.
+- **Sistema de temas** claro/oscuro/sistema con paleta accesible (WCAG AA) — no estaba en el alcance original.
+- **Capa de resiliencia de sesión** (`useGoogleToken`): renovación proactiva, bajo demanda, reintento tras 401 y reconexión al recuperar foco/red.
+- **Filtros compartidos** (estado, proyecto, responsable, periodo) entre Matriz y Gantt con un único predicado (`matchesFilters`).
+
+`docs/plan_de_trabajo.md` quedó como bitácora histórica de planificación; las casillas sin marcar reflejan el checklist original, no el estado actual del código.
 
 ---
 
@@ -49,13 +81,57 @@ Al crear una tarea, el proyecto y el responsable activos en los filtros vienen p
 
 ## Stack
 
-- **Vue 3** (Composition API, `<script setup>`) + **Vue Router**
-- **Vite** como bundler
-- **Firebase** — Authentication (Google), Firestore, Hosting
-- **FullCalendar** para la vista de calendario
-- **Google Identity Services** para renovar el token OAuth sin interrumpir al usuario
+| Capa | Tecnología | Uso |
+|---|---|---|
+| Frontend | **Vue 3** (Composition API, `<script setup>`) | Toda la UI, sin Options API |
+| Enrutado | **Vue Router 5** | Rutas + guardas de autenticación |
+| Build | **Vite 8** | Dev server, HMR, bundle de producción |
+| Backend as a Service | **Firebase** — Authentication (Google), Firestore, Hosting | Persistencia, sesión y despliegue |
+| Calendario | **FullCalendar 6** (`core`, `daygrid`, `timegrid`, `interaction`, `vue3`) | Vista mensual/semanal/diaria con drag & drop |
+| Identidad | **Google Identity Services** (GIS) | Renovación silenciosa del token OAuth de Calendar/Gmail |
+| APIs externas | **Google Calendar API v3**, **Gmail API v1** | Sincronización de eventos y envío de avisos |
 
-Sin librería de estado ni de UI: el estado compartido son composables singleton y los estilos son CSS propio con variables en `src/assets/styles/main.css`.
+Deliberadamente **sin librería de estado** (Vuex/Pinia) ni **librería de componentes** (Vuetify/PrimeVue): el estado compartido son composables singleton a nivel de módulo y los estilos son CSS propio con variables en `src/assets/styles/main.css`. Superficie de dependencias mínima a propósito — menos versiones que mantener, menos bundle.
+
+---
+
+## Arquitectura
+
+Arquitectura en capas, unidireccional: la UI nunca toca Firebase o Google directamente, siempre pasa por un composable.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Views (una por ruta)                                    │
+│  DashboardView · CalendarView · GanttView ·               │
+│  ProyectosView · ContactosView · LoginView                │
+└───────────────────────────┬────────────────────────────┘
+                             │ usa
+┌───────────────────────────▼────────────────────────────┐
+│  Composables (estado + lógica de negocio, singleton)      │
+│  useAuth · useTasks · useProjects · useContacts ·          │
+│  useFilters · useTheme · useGoogleToken · useNotifications │
+└──────────┬───────────────────────────────┬──────────────┘
+           │                               │
+┌──────────▼──────────────┐   ┌────────────▼─────────────┐
+│  services/firebase        │   │  services/google           │
+│  config.js (SDK init)     │   │  apiClient.js (googleFetch) │
+│  errors.js (Firestore →   │   │  gisClient.js (OAuth/GIS)   │
+│   mensajes accionables)   │   │  googleCalendar.js · gmail.js│
+└──────────┬───────────────┘   └────────────┬─────────────┘
+           │                                │
+┌──────────▼───────────────┐   ┌────────────▼─────────────┐
+│  Firebase (Auth,           │   │  Google Calendar API /     │
+│  Firestore, Hosting)       │   │  Gmail API                 │
+└────────────────────────────┘   └─────────────────────────┘
+```
+
+**Principios que sostiene el código:**
+
+- **Composables singleton para estado compartido.** `useAuth`, `useFilters` y `useGoogleToken` declaran sus `ref` fuera de la función exportada, así todos los componentes leen la misma instancia — un solo observador de Firebase para toda la app, no uno por componente montado.
+- **Un único punto de entrada a Google.** Todo `fetch` a Calendar o Gmail pasa por `googleFetch` (`services/google/apiClient.js`), que centraliza token, reintento tras 401 y errores. Los servicios de dominio (`googleCalendar.js`, `gmail.js`) no conocen tokens.
+- **Firestore es la fuente de verdad; Google es best-effort.** Se escribe primero en Firestore y después se sincroniza con Google — si la sincronización falla, la tarea no se pierde, solo queda marcada como pendiente.
+- **Errores traducidos antes de llegar a la UI.** `describeFirestoreError`, `describeGoogleApiError` y `describeAuthError` convierten códigos de error en mensajes accionables en español; los componentes nunca muestran un código crudo.
+- **Predicados de filtrado centralizados.** `matchesFilters()` vive en `useFilters` y lo comparten Matriz y Gantt, así no pueden divergir en qué tarea se muestra en cada vista.
 
 ---
 
@@ -207,6 +283,17 @@ Firebase Auth renueva su propio ID token, pero **no** renueva el access token de
 4. **Al recuperar el foco o la red** — eventos `visibilitychange` y `online`.
 
 La renovación es silenciosa vía Google Identity Services. Si no es posible (sin `VITE_GOOGLE_CLIENT_ID`, o sesión de Google cerrada), aparece un aviso persistente con un botón **Reconectar** que resuelve todo en un clic. Las renovaciones concurrentes se agrupan en una sola petición y el token se comparte entre pestañas.
+
+---
+
+## Seguridad y manejo de credenciales
+
+- **Ninguna credencial vive en el repositorio.** Todas las claves (Firebase, Google Client ID) se leen de variables de entorno `VITE_*` en tiempo de build; el repo solo versiona `.env.example` con placeholders. `.env`, `.env.local` y cualquier `.env.*` están en `.gitignore`.
+- **La API key de Firebase no es un secreto de servidor.** Identifica el proyecto ante Firebase, pero quien decide qué puede leer o escribir cada usuario son las [Firestore Security Rules](firestore.rules) — no la API key. Igualmente se mantiene fuera del repo por buena práctica y para no acoplar el código a un proyecto de Firebase concreto.
+- **Autorización a nivel de documento.** Las tres colecciones (`tareas`, `proyectos`, `contactos`) exigen `request.auth != null` y que `user_id` del documento coincida con el UID autenticado, tanto para leer como para escribir. Un usuario no puede ver ni modificar datos de otro aunque conozca el ID del documento.
+- **El token OAuth de Google nunca se persiste.** Vive solo en memoria (`useGoogleToken.js`) durante la sesión del tab; no se guarda en `localStorage` ni en Firestore. Al cerrar la pestaña, desaparece.
+- **Auditoría realizada en esta sesión:** se revisó el código fuente completo y el historial de git en busca de claves API, tokens, service accounts y contraseñas embebidas — no se encontró ninguna. Se corrigió `.gitignore` (no cubría explícitamente `.env`, solo `*.local`) y se dejó de versionar la caché local de Firebase Hosting (`.firebase/`), que no contenía secretos pero no debía estar en el repo.
+- **Antes de desplegar o hacer público el repositorio:** confirma que `.env.local` nunca se hizo `git add` por error (`git log --all -- .env.local`), rota cualquier credencial que hayas compartido fuera de este flujo, y revisa los **orígenes autorizados** del OAuth Client ID en Google Cloud Console para que solo incluyan tus dominios reales.
 
 ---
 
