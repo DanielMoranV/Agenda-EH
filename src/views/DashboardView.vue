@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import TaskCard from '../components/matrix/TaskCard.vue'
 import TaskFormModal from '../components/matrix/TaskFormModal.vue'
 import { useTasks } from '../composables/useTasks'
@@ -9,19 +9,11 @@ import { useContacts } from '../composables/useContacts'
 import { useNotifications } from '../composables/useNotifications'
 
 // Extraemos estado y métodos de Firestore
-const { tasks, addTask, updateTask, removeTask, loadingTasks } = useTasks()
-const { filterProject, filterContact, triggerNewTask, matchesFilters } = useFilters()
+const { tasks, updateTask, removeTask, loadingTasks } = useTasks()
+const { matchesFilters } = useFilters()
 const { projects } = useProjects()
 const { contacts } = useContacts()
 const { notifySuccess, notifyError } = useNotifications()
-
-// Escuchar evento de crear tarea desde la barra superior (App.vue)
-watch(triggerNewTask, (val) => {
-  if (val) {
-    openCreateModal()
-    triggerNewTask.value = false
-  }
-})
 
 // --- LÓGICA DE FILTROS ---
 const mobileTab = ref('q1') // Para la navegación móvil
@@ -58,22 +50,10 @@ const q3Tasks = computed(() => filteredTasks.value.filter(t => t.es_urgente && !
 const q4Tasks = computed(() => filteredTasks.value.filter(t => !t.es_urgente && !t.es_importante))
 
 // --- LÓGICA DEL MODAL ---
+// Solo edición: el alta de tareas la sirve el modal de App.vue, junto al botón
+// "Nueva Tarea" que lo abre.
 const isModalOpen = ref(false)
 const taskToEdit = ref(null)
-
-// Si hay un proyecto o un responsable concretos en los filtros, la tarea nueva
-// ya nace asignada a ellos: es el contexto en el que el usuario está trabajando.
-const newTaskDefaults = computed(() => {
-  const defaults = {}
-  if (filterProject.value !== 'Todos') defaults.proyecto_id = filterProject.value
-  if (filterContact.value !== 'Todos') defaults.contacto_id = filterContact.value
-  return defaults
-})
-
-const openCreateModal = () => {
-  taskToEdit.value = null
-  isModalOpen.value = true
-}
 
 const openEditModal = (task) => {
   taskToEdit.value = { ...task }
@@ -81,14 +61,9 @@ const openEditModal = (task) => {
 }
 
 const saveTask = async (taskData) => {
-  const isEdit = Boolean(taskToEdit.value?.id)
   try {
-    if (isEdit) {
-      await updateTask(taskToEdit.value.id, taskData)
-    } else {
-      await addTask(taskData)
-    }
-    notifySuccess(isEdit ? 'Tarea actualizada' : 'Tarea creada', taskData.titulo)
+    await updateTask(taskToEdit.value.id, taskData)
+    notifySuccess('Tarea actualizada', taskData.titulo)
   } catch (err) {
     notifyError('No se pudo guardar la tarea', err.message)
   }
@@ -194,12 +169,11 @@ const toggleTaskStatus = async (task) => {
       </div>
     </div>
 
-    <TaskFormModal 
+    <TaskFormModal
       :is-open="isModalOpen"
       :task="taskToEdit"
       :projects="projects"
       :contacts="contacts"
-      :defaults="newTaskDefaults"
       @close="isModalOpen = false"
       @save="saveTask"
     />

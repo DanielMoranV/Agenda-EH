@@ -1,14 +1,17 @@
 <script setup>
-import { watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useAuth } from './composables/useAuth'
 import { useFilters } from './composables/useFilters'
 import { useProjects } from './composables/useProjects'
 import { useContacts } from './composables/useContacts'
+import { useTasks } from './composables/useTasks'
+import { useNotifications } from './composables/useNotifications'
 import { useRoute, useRouter } from 'vue-router'
 import ToastHost from './components/ui/ToastHost.vue'
 import GoogleSyncStatus from './components/ui/GoogleSyncStatus.vue'
 import ThemeToggle from './components/ui/ThemeToggle.vue'
 import DateRangePicker from './components/ui/DateRangePicker.vue'
+import TaskFormModal from './components/matrix/TaskFormModal.vue'
 
 const { user, authReady, logout } = useAuth()
 const {
@@ -17,13 +20,57 @@ const {
   filterContact,
   filterDateType,
   filterDateRange,
-  filterSingleDate,
-  triggerNewTask
+  filterSingleDate
 } = useFilters()
 const { projects } = useProjects()
 const { contacts } = useContacts()
+const { addTask } = useTasks()
+const { notifySuccess, notifyError } = useNotifications()
 const route = useRoute()
 const router = useRouter()
+
+// --- Alta de tareas ---
+// El modal de creación vive aquí, junto al botón que lo abre. Antes el botón
+// solo levantaba un flag global (`triggerNewTask`) que cada vista tenía que
+// escuchar por su cuenta: la vista Gantt nunca lo hizo, así que el botón no
+// hacía nada allí y encima dejaba el flag activo, abriendo el modal solo al
+// volver a la Matriz.
+const isCreateModalOpen = ref(false)
+
+const toISODate = (date) => {
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+// La tarea nueva nace con el contexto en el que trabaja el usuario: proyecto y
+// responsable filtrados y, en Gantt, una fecha dentro del periodo visible (sin
+// fecha no aparecería en el diagrama, que solo muestra tareas programadas).
+const newTaskDefaults = computed(() => {
+  const defaults = {}
+  if (filterProject.value !== 'Todos') defaults.proyecto_id = filterProject.value
+  if (filterContact.value !== 'Todos') defaults.contacto_id = filterContact.value
+
+  if (route.name === 'gantt') {
+    if (filterDateType.value === 'dia' && filterSingleDate.value) {
+      defaults.fecha_inicio = filterSingleDate.value
+    } else if (filterDateType.value === 'rango' && filterDateRange.value.start) {
+      defaults.fecha_inicio = filterDateRange.value.start
+    } else {
+      defaults.fecha_inicio = toISODate(new Date())
+    }
+  }
+
+  return defaults
+})
+
+const createTask = async (taskData) => {
+  try {
+    await addTask(taskData)
+    notifySuccess('Tarea creada', taskData.titulo)
+  } catch (err) {
+    notifyError('No se pudo crear la tarea', err.message)
+  }
+}
 
 // Si la sesión se pierde en cualquier momento (caducidad, revocación, logout en
 // otra pestaña), sacamos al usuario de la vista protegida al instante en lugar
@@ -127,7 +174,7 @@ watch(user, (currentUser) => {
           </div>
           
           <div class="filter-actions">
-            <button class="btn-create" @click="triggerNewTask = true" title="Nueva Tarea">
+            <button class="btn-create" @click="isCreateModalOpen = true" title="Nueva Tarea">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
               <span class="desktop-only">Nueva Tarea</span>
             </button>
@@ -143,6 +190,15 @@ watch(user, (currentUser) => {
         </transition>
       </router-view>
     </main>
+
+    <TaskFormModal
+      :is-open="isCreateModalOpen"
+      :projects="projects"
+      :contacts="contacts"
+      :defaults="newTaskDefaults"
+      @close="isCreateModalOpen = false"
+      @save="createTask"
+    />
 
     <ToastHost />
   </div>

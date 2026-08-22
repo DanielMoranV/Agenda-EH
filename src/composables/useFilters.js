@@ -8,7 +8,6 @@ const filterContact = ref('Todos')
 const filterDateType = ref('esta-semana')
 const filterDateRange = ref({ start: '', end: '' })
 const filterSingleDate = ref('')
-const triggerNewTask = ref(false)
 
 /**
  * Construye un Date local desde "YYYY-MM-DD" y "HH:MM".
@@ -113,7 +112,6 @@ export function useFilters() {
     filterDateType,
     filterDateRange,
     filterSingleDate,
-    triggerNewTask,
     getDateBounds,
     matchesFilters
   }
