@@ -29,6 +29,16 @@ const { notifySuccess, notifyError } = useNotifications()
 const route = useRoute()
 const router = useRouter()
 
+// Vistas que se alimentan de la barra de filtros de la cabecera
+const showFilterBar = computed(() =>
+  ['dashboard', 'gantt', 'indicadores'].includes(route.name)
+)
+
+// Indicadores mide los tres estados y trae su propio selector de mes: filtrar
+// ahí por estado o por periodo vaciaría el indicador. Solo proyecto y
+// responsable acotan lo que mide.
+const showStatusAndPeriod = computed(() => route.name !== 'indicadores')
+
 // --- Alta de tareas ---
 // El modal de creación vive aquí, junto al botón que lo abre. Antes el botón
 // solo levantaba un flag global (`triggerNewTask`) que cada vista tenía que
@@ -94,6 +104,7 @@ watch(user, (currentUser) => {
             <router-link to="/" class="nav-link">Matriz</router-link>
             <router-link to="/calendar" class="nav-link">Calendario</router-link>
             <router-link to="/gantt" class="nav-link">Gantt</router-link>
+            <router-link to="/indicadores" class="nav-link">Indicadores</router-link>
             <router-link to="/proyectos" class="nav-link">Proyectos</router-link>
             <router-link to="/contactos" class="nav-link">Contactos</router-link>
           </nav>
@@ -113,11 +124,11 @@ watch(user, (currentUser) => {
         </div>
       </div>
       
-      <!-- Bottom Row: Filters (Visible in Dashboard and Gantt views) -->
-      <div class="header-bottom" v-if="route.name === 'dashboard' || route.name === 'gantt'">
+      <!-- Bottom Row: Filters (Matriz, Gantt e Indicadores) -->
+      <div class="header-bottom" v-if="showFilterBar">
         <div class="filters-bar">
           <div class="filters-scroll">
-            <div class="filter-group">
+            <div class="filter-group" v-if="showStatusAndPeriod">
               <label>Estado:</label>
               <select v-model="filterStatus" class="corp-select">
                 <option value="Todos">Todos</option>
@@ -126,9 +137,9 @@ watch(user, (currentUser) => {
                 <option value="Finalizado">Finalizado</option>
               </select>
             </div>
-            
-            <div class="filter-divider desktop-only"></div>
-            
+
+            <div class="filter-divider desktop-only" v-if="showStatusAndPeriod"></div>
+
             <div class="filter-group">
               <label>Proyecto:</label>
               <select v-model="filterProject" class="corp-select">
@@ -147,9 +158,9 @@ watch(user, (currentUser) => {
               </select>
             </div>
 
-            <div class="filter-divider desktop-only"></div>
+            <div class="filter-divider desktop-only" v-if="showStatusAndPeriod"></div>
 
-            <div class="filter-group">
+            <div class="filter-group" v-if="showStatusAndPeriod">
               <label>Periodo:</label>
               <select v-model="filterDateType" class="corp-select">
                 <option value="todos">Cualquier fecha</option>
@@ -161,11 +172,11 @@ watch(user, (currentUser) => {
               </select>
             </div>
 
-            <div v-if="filterDateType === 'dia'" class="filter-group date-group">
+            <div v-if="showStatusAndPeriod && filterDateType === 'dia'" class="filter-group date-group">
               <DateRangePicker mode="single" v-model:start="filterSingleDate" />
             </div>
 
-            <div v-if="filterDateType === 'rango'" class="filter-group date-group">
+            <div v-if="showStatusAndPeriod && filterDateType === 'rango'" class="filter-group date-group">
               <DateRangePicker
                 v-model:start="filterDateRange.start"
                 v-model:end="filterDateRange.end"
