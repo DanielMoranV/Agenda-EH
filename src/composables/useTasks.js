@@ -234,6 +234,27 @@ export function useTasks() {
     }
   }
 
+  /**
+   * Envío manual (o reenvío) del aviso a todos los destinatarios de la tarea,
+   * con independencia de si ya se avisó o del interruptor del formulario.
+   */
+  const sendNotifications = async (taskId) => {
+    const task = tasks.value.find(t => t.id === taskId)
+    if (!task) return
+
+    const keys = []
+    if (task.contacto_id) keys.push(`responsable:${task.contacto_id}`)
+    ;(task.contactos_copia_ids || []).forEach((id) => {
+      if (id && id !== task.contacto_id) keys.push(`copia:${id}`)
+    })
+
+    if (!keys.length) {
+      notify({ type: 'info', title: 'Sin destinatarios', message: 'La tarea no tiene responsable ni contactos en copia.' })
+      return
+    }
+    await notifyRecipients(task, keys)
+  }
+
   const removeTask = async (taskId) => {
     const currentTask = tasks.value.find(t => t.id === taskId)
 
@@ -260,6 +281,7 @@ export function useTasks() {
     error,
     addTask,
     updateTask,
+    sendNotifications,
     removeTask
   }
 }

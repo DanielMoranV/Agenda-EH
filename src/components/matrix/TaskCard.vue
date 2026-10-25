@@ -16,7 +16,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['edit', 'delete', 'toggle-status'])
+defineEmits(['edit', 'delete', 'toggle-status', 'notify'])
 
 // Damos formato a la fecha si existe (soporta timestamp de Firestore o Date de JS)
 const formattedDate = computed(() => {
@@ -60,6 +60,9 @@ const projectName = computed(() => {
   return project ? project.nombre : null
 })
 
+// El botón de correo solo tiene sentido si hay a quién avisar
+const hasRecipients = computed(() => Boolean(props.task.contacto_id) || (props.task.contactos_copia_ids || []).length > 0)
+
 const copyCount = computed(() => (props.task.contactos_copia_ids || []).length)
 
 const contactName = computed(() => {
@@ -82,6 +85,9 @@ const contactName = computed(() => {
       </label>
       <h4 class="task-title" :title="task.titulo">{{ task.titulo }}</h4>
       <div class="task-actions">
+        <button v-if="hasRecipients" class="icon-btn edit-btn" @click="$emit('notify', task)" title="Enviar / reenviar aviso por correo" aria-label="Enviar o reenviar aviso por correo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+        </button>
         <button class="icon-btn edit-btn" @click="$emit('edit', task)" title="Editar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
         </button>
