@@ -1,65 +1,25 @@
-import { ref, onUnmounted, watch } from 'vue'
 import { db } from '../services/firebase/config'
 import { useAuth } from './useAuth'
-import { notify } from './useNotifications'
-import { describeFirestoreError } from '../services/firebase/errors'
-import { 
-  collection, 
-  query, 
-  where, 
-  onSnapshot, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc 
+import { createCollectionStore } from './createCollectionStore'
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  doc,
+  getDocs,
+  query,
+  where,
+  writeBatch
 } from 'firebase/firestore'
 
+const { items: contacts, loading: loadingContacts, error } = createCollectionStore({
+  collectionName: 'contactos',
+  errorKey: 'contacts-stream-error',
+  errorTitle: 'No se pudieron cargar los contactos'
+})
+
 export function useContacts() {
-  const contacts = ref([])
-  const loadingContacts = ref(true)
-  const error = ref(null)
-  
   const { user } = useAuth()
-  let unsubscribe = null
-
-  const subscribeToContacts = () => {
-    if (!user.value) {
-      contacts.value = []
-      loadingContacts.value = false
-      return
-    }
-
-    loadingContacts.value = true
-    const q = query(
-      collection(db, 'contactos'), 
-      where('user_id', '==', user.value.uid)
-    )
-
-    unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const contactsData = []
-      querySnapshot.forEach((document) => {
-        contactsData.push({ id: document.id, ...document.data() })
-      })
-      contacts.value = contactsData
-      loadingContacts.value = false
-    }, (err) => {
-      console.error("Error obteniendo contactos de Firestore:", err)
-      error.value = describeFirestoreError(err)
-      loadingContacts.value = false
-      notify({
-        type: 'error',
-        key: 'contacts-stream-error',
-        title: 'No se pudieron cargar los contactos',
-        message: error.value,
-        duration: 0
-      })
-    })
-  }
-
-  watch(user, () => {
-    if (unsubscribe) unsubscribe()
-    subscribeToContacts()
-  }, { immediate: true })
 
   const addContact = async (contactData) => {
     if (!user.value) throw new Error("No autenticado")
@@ -89,16 +49,22 @@ export function useContacts() {
 
   const removeContact = async (contactId) => {
     try {
-      await deleteDoc(doc(db, 'contactos', contactId))
+      // Las tareas que apuntaban a este registro quedarían con un id colgante:
+      // las desvinculamos en el mismo lote que el borrado.
+      const linked = await getDocs(query(
+        collection(db, 'tareas'),
+        where('user_id', '==', user.value.uid),
+        where('contacto_id', '==', contactId)
+      ))
+      const batch = writeBatch(db)
+      linked.forEach((taskDoc) => batch.update(taskDoc.ref, { contacto_id: '', notificar_responsable: false }))
+      batch.delete(doc(db, 'contactos', contactId))
+      await batch.commit()
     } catch (err) {
       console.error("Error al eliminar contacto:", err)
       throw err
     }
   }
-
-  onUnmounted(() => {
-    if (unsubscribe) unsubscribe()
-  })
 
   return {
     contacts,

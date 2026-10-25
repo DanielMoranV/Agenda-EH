@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useTasks } from '../composables/useTasks'
 import { useProjects } from '../composables/useProjects'
 import { useContacts } from '../composables/useContacts'
@@ -24,6 +24,11 @@ const toMonthKey = (date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 
 const selectedMonth = ref(toMonthKey(new Date()))
+
+// Si el usuario vacía el input de mes, volvemos al último mes válido
+watch(selectedMonth, (value, previous) => {
+  if (!value) selectedMonth.value = previous || toMonthKey(new Date())
+})
 
 const monthLabel = computed(() => {
   const [year, month] = selectedMonth.value.split('-').map(Number)

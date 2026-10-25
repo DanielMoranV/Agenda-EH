@@ -114,7 +114,7 @@ watch(filterDateType, (type) => {
 // Filtramos tareas que tengan al menos una fecha y calculamos su rango real
 const ganttTasks = computed(() => {
   // Filtrado compartido con la vista Matriz (ver useFilters.matchesFilters)
-  const decorated = tasks.value.filter(matchesFilters)
+  const decorated = tasks.value.filter(t => matchesFilters(t))
     .filter(t => t.fecha_inicio || t.fecha_vencimiento)
     .map(t => {
       const startStr = t.fecha_inicio || t.fecha_vencimiento

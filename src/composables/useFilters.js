@@ -2,7 +2,7 @@ import { ref } from 'vue'
 
 // Estado global de los filtros (singleton a nivel de módulo): la barra de la
 // cabecera los escribe y las vistas Matriz y Gantt los leen.
-const filterStatus = ref('Pendiente')
+const filterStatus = ref('Todos')
 const filterProject = ref('Todos')
 const filterContact = ref('Todos')
 const filterDateType = ref('esta-semana')
@@ -78,7 +78,7 @@ export const getDateBounds = () => {
  * Fuente única de verdad: antes esta lógica estaba duplicada (y ligeramente
  * divergente) en DashboardView y GanttView.
  */
-export const matchesFilters = (task) => {
+export const matchesFilters = (task, { includeOverdue = false } = {}) => {
   if (filterStatus.value !== 'Todos' && task.estado !== filterStatus.value) return false
   if (filterProject.value !== 'Todos' && task.proyecto_id !== filterProject.value) return false
   if (filterContact.value !== 'Todos' && task.contacto_id !== filterContact.value) return false
@@ -86,8 +86,9 @@ export const matchesFilters = (task) => {
   const bounds = getDateBounds()
   if (!bounds) return true
 
-  // Con periodo acotado, una tarea sin fechas no puede entrar
-  if (!task.fecha_inicio && !task.fecha_vencimiento) return false
+  // Una tarea sin fechas no pertenece a ningún periodo. Se deja pasar para que
+  // la Matriz no la esconda; el Gantt la descarta por su cuenta (no tiene barra).
+  if (!task.fecha_inicio && !task.fecha_vencimiento) return true
 
   const tStart = task.fecha_inicio
     ? parseDateTime(task.fecha_inicio, task.con_hora ? task.hora_inicio : null)
@@ -101,7 +102,11 @@ export const matchesFilters = (task) => {
   const endsInside = tEnd && tEnd >= bounds.start && tEnd <= bounds.end
   const spansPeriod = tStart && tEnd && tStart <= bounds.start && tEnd >= bounds.end
 
-  return Boolean(startsInside || endsInside || spansPeriod)
+  if (startsInside || endsInside || spansPeriod) return true
+
+  // Vencidas sin cerrar: siguen pendientes aunque su fecha sea anterior al
+  // periodo, así que la Matriz las mantiene visibles (el Gantt no lo pide).
+  return includeOverdue && task.estado !== 'Finalizado' && Boolean(tEnd) && tEnd < bounds.start
 }
 
 export function useFilters() {

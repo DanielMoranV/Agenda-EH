@@ -4,12 +4,17 @@ import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
+import TaskFormModal from '../components/matrix/TaskFormModal.vue'
 import { useTasks } from '../composables/useTasks'
+import { useProjects } from '../composables/useProjects'
+import { useContacts } from '../composables/useContacts'
 import { useNotifications } from '../composables/useNotifications'
 import { useTheme } from '../composables/useTheme'
 
 const { tasks, updateTask } = useTasks()
-const { notifyError } = useNotifications()
+const { projects } = useProjects()
+const { contacts } = useContacts()
+const { notifyError, notifySuccess } = useNotifications()
 const { resolvedTheme, readThemeColors } = useTheme()
 
 // FullCalendar pinta los eventos con estilos en línea, así que necesita colores
@@ -20,12 +25,77 @@ const quadrantColors = computed(() => {
   return readThemeColors(['q1-color', 'q2-color', 'q3-color', 'q4-color', 'on-color-text'])
 })
 
+const pad = (n) => String(n).padStart(2, '0')
+
+// Suma días a "YYYY-MM-DD" en horario local.
+const shiftDate = (dateStr, days) => {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const dt = new Date(y, m - 1, d + days)
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`
+}
+
 const colorForTask = (task) => {
   const c = quadrantColors.value
   if (task.es_urgente && task.es_importante) return c['q1-color']    // Hacer
   if (!task.es_urgente && task.es_importante) return c['q2-color']   // Decidir
   if (task.es_urgente && !task.es_importante) return c['q3-color']   // Delegar
   return c['q4-color']                                                // Eliminar
+}
+
+// --- Persistencia de cambios hechos arrastrando/redimensionando ---
+const persistEventChange = async (info, errorTitle) => {
+  const { event } = info
+
+  const newStart = event.startStr.split('T')[0]
+  // Para allDay endStr es el día EXCLUSIVO: restamos uno para volver al día de
+  // vencimiento real (si no, cada arrastre alargaba la tarea un día).
+  let newEnd = newStart
+  if (event.endStr) {
+    const endDay = event.endStr.split('T')[0]
+    newEnd = event.allDay ? shiftDate(endDay, -1) : endDay
+    if (newEnd < newStart) newEnd = newStart
+  }
+
+  const updatePayload = { fecha_inicio: newStart, fecha_vencimiento: newEnd }
+
+  if (event.allDay) {
+    // Pasó (o sigue) en la franja de día completo: no deben quedar horas viejas
+    updatePayload.con_hora = false
+    updatePayload.hora_inicio = ''
+    updatePayload.hora_vencimiento = ''
+  } else {
+    updatePayload.con_hora = true
+    updatePayload.hora_inicio = event.startStr.split('T')[1].substring(0, 5) // "HH:MM"
+    updatePayload.hora_vencimiento = event.endStr && event.endStr.includes('T')
+      ? event.endStr.split('T')[1].substring(0, 5)
+      : ''
+  }
+
+  try {
+    await updateTask(event.id, updatePayload)
+  } catch (e) {
+    // Solo revertimos si falló Firestore: los fallos de Google se avisan aparte
+    info.revert()
+    notifyError(errorTitle, e.message)
+  }
+}
+
+// --- Edición desde el calendario ---
+const isModalOpen = ref(false)
+const isSavingTask = ref(false)
+const taskToEdit = ref(null)
+
+const saveTask = async (taskData) => {
+  isSavingTask.value = true
+  try {
+    await updateTask(taskToEdit.value.id, taskData)
+    notifySuccess('Tarea actualizada', taskData.titulo)
+    isModalOpen.value = false
+  } catch (err) {
+    notifyError('No se pudo guardar la tarea', err.message)
+  } finally {
+    isSavingTask.value = false
+  }
 }
 
 // Configuración básica del calendario
@@ -38,7 +108,6 @@ const calendarOptions = ref({
     right: 'dayGridMonth,timeGridWeek,timeGridDay'
   },
   editable: true, // Permite mover y redimensionar
-  droppable: true,
   height: '100%',
   
   // Mapeamos nuestras tareas al formato de eventos de FullCalendar
@@ -47,62 +116,45 @@ const calendarOptions = ref({
       // Color según el cuadrante de la matriz
       const bgColor = colorForTask(task)
 
-      // Formatear fechas respetando horas opcionales
-      const startStr = task.con_hora && task.hora_inicio 
-        ? `${task.fecha_inicio}T${task.hora_inicio}:00` 
-        : task.fecha_inicio;
-        
-      const endStr = task.con_hora && task.hora_vencimiento 
-        ? `${task.fecha_vencimiento}T${task.hora_vencimiento}:00` 
-        : task.fecha_vencimiento;
+      // Si falta una de las dos fechas, la otra hace de inicio y fin
+      const startDate = task.fecha_inicio || task.fecha_vencimiento
+      const endDate = task.fecha_vencimiento || task.fecha_inicio
+      if (!startDate) return null
+
+      const startStr = task.con_hora && task.hora_inicio
+        ? `${startDate}T${task.hora_inicio}:00`
+        : startDate
+
+      // En eventos de día completo FullCalendar trata el fin como EXCLUSIVO:
+      // para que cubra el día de vencimiento hay que pasar el día siguiente.
+      const endStr = task.con_hora && task.hora_vencimiento
+        ? `${endDate}T${task.hora_vencimiento}:00`
+        : shiftDate(endDate, 1)
 
       return {
         id: task.id,
         title: task.titulo,
-        start: startStr || endStr,
-        end: endStr || startStr,
+        start: startStr,
+        end: endStr,
         allDay: !task.con_hora,
         backgroundColor: bgColor,
         borderColor: bgColor,
         textColor: quadrantColors.value['on-color-text'],
         extendedProps: { ...task } // Guardar toda la data de la tarea
       }
-    }).filter(e => e.start) // Solo renderizamos eventos que tengan alguna fecha asignada
+    }).filter(Boolean) // Solo renderizamos eventos que tengan alguna fecha asignada
   }),
 
-  // Hook que se dispara al arrastrar un evento a otro día
-  eventDrop: async (info) => {
-    const { event } = info
-    const taskId = event.id
-    
-    // Extraemos las nuevas fechas en formato 'YYYY-MM-DD' de FullCalendar
-    const newStart = event.startStr.split('T')[0]
-    // FullCalendar da endStr como el día exclusivo para allDay
-    const newEnd = event.endStr ? event.endStr.split('T')[0] : newStart
+  // Mover (arrastrar) y redimensionar guardan exactamente lo mismo
+  eventDrop: (info) => persistEventChange(info, 'No se pudo mover la tarea'),
+  eventResize: (info) => persistEventChange(info, 'No se pudo cambiar la duración'),
 
-    const updatePayload = {
-      fecha_inicio: newStart,
-      fecha_vencimiento: newEnd
-    }
-
-    // Si se arrastra dentro de una vista TimeGrid, capturamos las horas
-    if (event.startStr.includes('T')) {
-      updatePayload.con_hora = true
-      updatePayload.hora_inicio = event.startStr.split('T')[1].substring(0, 5) // "HH:MM"
-      if (event.endStr && event.endStr.includes('T')) {
-        updatePayload.hora_vencimiento = event.endStr.split('T')[1].substring(0, 5)
-      }
-    }
-
-    try {
-      // Esto actualizará Firestore y automáticamente tu Google Calendar!
-      await updateTask(taskId, updatePayload)
-    } catch (e) {
-      // Solo revertimos si falló Firestore: los fallos de Google ya no se
-      // propagan hasta aquí (se avisan por notificación y se reintentan luego).
-      info.revert()
-      notifyError('No se pudo mover la tarea', e.message)
-    }
+  // Clic en un evento: abre la tarea para editarla
+  eventClick: (info) => {
+    const task = tasks.value.find(t => t.id === info.event.id)
+    if (!task) return
+    taskToEdit.value = { ...task }
+    isModalOpen.value = true
   }
 })
 </script>
@@ -110,6 +162,16 @@ const calendarOptions = ref({
 <template>
   <div class="calendar-view glass-panel">
     <FullCalendar :options="calendarOptions" />
+
+    <TaskFormModal
+      :is-open="isModalOpen"
+      :task="taskToEdit"
+      :projects="projects"
+      :contacts="contacts"
+      :saving="isSavingTask"
+      @close="isModalOpen = false"
+      @save="saveTask"
+    />
   </div>
 </template>
 

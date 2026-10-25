@@ -52,7 +52,7 @@ const saveContact = async () => {
 }
 
 const deleteContact = async (id) => {
-  if (confirm("¿Estás seguro de eliminar este contacto?")) {
+  if (confirm("¿Eliminar este contacto? Las tareas asignadas se conservarán, pero quedarán sin responsable.")) {
     try {
       await removeContact(id)
       notifySuccess('Contacto eliminado')

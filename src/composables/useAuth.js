@@ -104,12 +104,15 @@ const loginWithGoogle = async ({ forceConsent = false } = {}) => {
 const logout = async ({ silent = false } = {}) => {
   loading.value = true
   try {
+    // El motivo se fija ANTES de signOut: onAuthStateChanged se dispara durante
+    // signOut y, sin motivo, lo trataría como una sesión perdida (aviso falso).
+    if (!silent) sessionEndReason.value = 'Has cerrado sesión correctamente.'
     clearToken({ revoke: true })
     await signOut(auth)
     user.value = null
-    if (!silent) sessionEndReason.value = 'Has cerrado sesión correctamente.'
   } catch (err) {
     console.error('Error en logout:', err)
+    if (!silent) sessionEndReason.value = null
     notify({ type: 'error', title: 'No se pudo cerrar sesión', message: describeAuthError(err) })
   } finally {
     loading.value = false

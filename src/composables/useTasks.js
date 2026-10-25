@@ -1,6 +1,6 @@
-import { ref, onUnmounted, watch } from 'vue'
 import { db } from '../services/firebase/config'
 import { useAuth } from './useAuth'
+import { createCollectionStore } from './createCollectionStore'
 import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from '../services/googleCalendar'
 import { sendTaskNotificationEmail } from '../services/gmail'
 import { GoogleAuthRequiredError, describeGoogleApiError } from '../services/google/apiClient'
@@ -8,9 +8,6 @@ import { notify } from './useNotifications'
 import { describeFirestoreError } from '../services/firebase/errors'
 import {
   collection,
-  query,
-  where,
-  onSnapshot,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -51,55 +48,14 @@ const syncWithGoogle = async (operation, { context }) => {
   }
 }
 
+const { items: tasks, loading: loadingTasks, error } = createCollectionStore({
+  collectionName: 'tareas',
+  errorKey: 'tasks-stream-error',
+  errorTitle: 'No se pudieron cargar las tareas'
+})
+
 export function useTasks() {
-  const tasks = ref([])
-  const loadingTasks = ref(true)
-  const error = ref(null)
-
   const { user } = useAuth()
-  let unsubscribe = null
-
-  const subscribeToTasks = () => {
-    if (!user.value) {
-      tasks.value = []
-      loadingTasks.value = false
-      return
-    }
-
-    loadingTasks.value = true
-    error.value = null
-    const q = query(
-      collection(db, 'tareas'),
-      where('user_id', '==', user.value.uid)
-    )
-
-    // onSnapshot mantiene los datos sincronizados en tiempo real
-    unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const tasksData = []
-      querySnapshot.forEach((document) => {
-        tasksData.push({ id: document.id, ...document.data() })
-      })
-      tasks.value = tasksData
-      loadingTasks.value = false
-      error.value = null
-    }, (err) => {
-      console.error('Error obteniendo tareas de Firestore:', err)
-      error.value = describeFirestoreError(err)
-      loadingTasks.value = false
-      notify({
-        type: 'error',
-        key: 'tasks-stream-error',
-        title: 'No se pudieron cargar las tareas',
-        message: error.value,
-        duration: 0
-      })
-    })
-  }
-
-  watch(user, () => {
-    if (unsubscribe) unsubscribe()
-    subscribeToTasks()
-  }, { immediate: true })
 
   /** Envía el correo de notificación al responsable. Nunca bloquea el guardado. */
   const notifyAssignee = async (taskData, contactId) => {
@@ -188,7 +144,21 @@ export function useTasks() {
       const merged = { ...currentTask, ...updates }
       const label = `La tarea "${merged.titulo}"`
 
-      if (currentTask.calendar_event_id) {
+      if (currentTask.calendar_event_id && !merged.fecha_inicio && !merged.fecha_vencimiento) {
+        // Se quitaron todas las fechas: el evento ya no tiene sentido (y Google
+        // rechazaría un PUT sin start/end), así que lo borramos y soltamos el ID.
+        const result = await syncWithGoogle(
+          () => deleteCalendarEvent(currentTask.calendar_event_id),
+          { context: label }
+        )
+        if (result.ok) {
+          try {
+            await updateDoc(doc(db, 'tareas', taskId), { calendar_event_id: null })
+          } catch (err) {
+            console.error('No se pudo limpiar el ID del evento de Calendar:', err)
+          }
+        }
+      } else if (currentTask.calendar_event_id) {
         const result = await syncWithGoogle(
           () => updateCalendarEvent(currentTask.calendar_event_id, merged),
           { context: label }
@@ -217,10 +187,12 @@ export function useTasks() {
       }
     }
 
-    // 3) Notificación por correo. Se comprueba sobre `updates` (no sobre la tarea
-    // combinada) para no reenviar el aviso en cada cambio de estado o arrastre
-    // en el calendario, donde el flag ni siquiera viene en la actualización.
-    if (updates.notificar_responsable && updates.contacto_id) {
+    // 3) Notificación por correo. El formulario de edición reenvía todos los
+    // campos (incluido el flag), así que además comprobamos que se haya ACTIVADO
+    // ahora o que el responsable sea otro; si no, cada edición reenviaría el aviso.
+    const flagTurnedOn = updates.notificar_responsable && !currentTask?.notificar_responsable
+    const assigneeChanged = updates.contacto_id !== currentTask?.contacto_id
+    if (updates.notificar_responsable && updates.contacto_id && (flagTurnedOn || assigneeChanged)) {
       await notifyAssignee({ ...currentTask, ...updates }, updates.contacto_id)
     }
   }
@@ -244,10 +216,6 @@ export function useTasks() {
       throw new Error(describeFirestoreError(err))
     }
   }
-
-  onUnmounted(() => {
-    if (unsubscribe) unsubscribe()
-  })
 
   return {
     tasks,

@@ -54,7 +54,7 @@ const saveProject = async () => {
 }
 
 const deleteProject = async (id) => {
-  if (confirm("¿Estás seguro de eliminar este proyecto?")) {
+  if (confirm("¿Eliminar este proyecto? Las tareas asociadas se conservarán, pero quedarán sin proyecto.")) {
     try {
       await removeProject(id)
       notifySuccess('Proyecto eliminado')

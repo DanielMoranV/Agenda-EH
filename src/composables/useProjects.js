@@ -1,65 +1,25 @@
-import { ref, onUnmounted, watch } from 'vue'
 import { db } from '../services/firebase/config'
 import { useAuth } from './useAuth'
-import { notify } from './useNotifications'
-import { describeFirestoreError } from '../services/firebase/errors'
-import { 
-  collection, 
-  query, 
-  where, 
-  onSnapshot, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc 
+import { createCollectionStore } from './createCollectionStore'
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  doc,
+  getDocs,
+  query,
+  where,
+  writeBatch
 } from 'firebase/firestore'
 
+const { items: projects, loading: loadingProjects, error } = createCollectionStore({
+  collectionName: 'proyectos',
+  errorKey: 'projects-stream-error',
+  errorTitle: 'No se pudieron cargar los proyectos'
+})
+
 export function useProjects() {
-  const projects = ref([])
-  const loadingProjects = ref(true)
-  const error = ref(null)
-  
   const { user } = useAuth()
-  let unsubscribe = null
-
-  const subscribeToProjects = () => {
-    if (!user.value) {
-      projects.value = []
-      loadingProjects.value = false
-      return
-    }
-
-    loadingProjects.value = true
-    const q = query(
-      collection(db, 'proyectos'), 
-      where('user_id', '==', user.value.uid)
-    )
-
-    unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const projectsData = []
-      querySnapshot.forEach((document) => {
-        projectsData.push({ id: document.id, ...document.data() })
-      })
-      projects.value = projectsData
-      loadingProjects.value = false
-    }, (err) => {
-      console.error("Error obteniendo proyectos de Firestore:", err)
-      error.value = describeFirestoreError(err)
-      loadingProjects.value = false
-      notify({
-        type: 'error',
-        key: 'projects-stream-error',
-        title: 'No se pudieron cargar los proyectos',
-        message: error.value,
-        duration: 0
-      })
-    })
-  }
-
-  watch(user, () => {
-    if (unsubscribe) unsubscribe()
-    subscribeToProjects()
-  }, { immediate: true })
 
   const addProject = async (projectData) => {
     if (!user.value) throw new Error("No autenticado")
@@ -89,16 +49,22 @@ export function useProjects() {
 
   const removeProject = async (projectId) => {
     try {
-      await deleteDoc(doc(db, 'proyectos', projectId))
+      // Las tareas que apuntaban a este registro quedarían con un id colgante:
+      // las desvinculamos en el mismo lote que el borrado.
+      const linked = await getDocs(query(
+        collection(db, 'tareas'),
+        where('user_id', '==', user.value.uid),
+        where('proyecto_id', '==', projectId)
+      ))
+      const batch = writeBatch(db)
+      linked.forEach((taskDoc) => batch.update(taskDoc.ref, { proyecto_id: '' }))
+      batch.delete(doc(db, 'proyectos', projectId))
+      await batch.commit()
     } catch (err) {
       console.error("Error al eliminar proyecto:", err)
       throw err
     }
   }
-
-  onUnmounted(() => {
-    if (unsubscribe) unsubscribe()
-  })
 
   return {
     projects,

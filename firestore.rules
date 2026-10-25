@@ -5,19 +5,34 @@ service cloud.firestore {
     
     // Reglas para la colección de tareas (RNF-03)
     match /tareas/{documentId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.user_id;
+      allow read, delete: if request.auth != null && request.auth.uid == resource.data.user_id;
+      // En update también se exige que el user_id no cambie: sin esto un usuario
+      // podría reasignar su documento a otra cuenta.
+      allow update: if request.auth != null
+        && request.auth.uid == resource.data.user_id
+        && request.resource.data.user_id == resource.data.user_id;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.user_id;
     }
 
     // Reglas para la colección de proyectos
     match /proyectos/{documentId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.user_id;
+      allow read, delete: if request.auth != null && request.auth.uid == resource.data.user_id;
+      // En update también se exige que el user_id no cambie: sin esto un usuario
+      // podría reasignar su documento a otra cuenta.
+      allow update: if request.auth != null
+        && request.auth.uid == resource.data.user_id
+        && request.resource.data.user_id == resource.data.user_id;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.user_id;
     }
 
     // Reglas para la colección de contactos
     match /contactos/{documentId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.user_id;
+      allow read, delete: if request.auth != null && request.auth.uid == resource.data.user_id;
+      // En update también se exige que el user_id no cambie: sin esto un usuario
+      // podría reasignar su documento a otra cuenta.
+      allow update: if request.auth != null
+        && request.auth.uid == resource.data.user_id
+        && request.resource.data.user_id == resource.data.user_id;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.user_id;
     }
   }

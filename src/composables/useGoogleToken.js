@@ -155,10 +155,16 @@ const renewSilently = async () => {
       status.value = 'disconnected'
       lastError.value = err
       throw err
-    } finally {
-      inFlightRenewal = null
     }
   })()
+
+  // La limpieza va aquí y no en un finally dentro de la función: si ésta falla
+  // antes de su primer await (NO_SESSION, GIS_NOT_CONFIGURED), el finally se
+  // ejecutaría ANTES de asignar `inFlightRenewal` y el rechazo quedaría
+  // guardado para siempre, bloqueando toda renovación posterior.
+  const current = inFlightRenewal
+  const release = () => { if (inFlightRenewal === current) inFlightRenewal = null }
+  current.then(release, release)
 
   return inFlightRenewal
 }

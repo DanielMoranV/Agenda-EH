@@ -56,7 +56,8 @@ const allDaySlot = (dateStr) => ({ date: dateStr })
 // Arma el cuerpo (payload) que se enviará a Google
 const buildEventPayload = (task) => {
   const payload = {
-    summary: task.titulo,
+    // Las tareas finalizadas se marcan en el título para que se vean cerradas en Google
+    summary: task.estado === 'Finalizado' ? `✅ ${task.titulo}` : task.titulo,
     description: task.descripcion || '',
     reminders: {
       useDefault: false,

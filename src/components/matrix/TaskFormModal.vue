@@ -20,7 +20,9 @@ const props = defineProps({
   defaults: {
     type: Object,
     default: () => ({})
-  }
+  },
+  // El padre lo activa mientras guarda: bloquea el botón y evita dobles envíos.
+  saving: Boolean
 })
 
 const emit = defineEmits(['close', 'save'])
@@ -43,10 +45,16 @@ const defaultTask = {
 }
 
 const formData = ref({ ...defaultTask })
+const formError = ref('')
+
+// Campos que gestiona la app, no el formulario: no deben viajar en la edición
+// (calendar_event_id del snapshot podía pisar un ID recién escrito).
+const INTERNAL_FIELDS = ['id', 'user_id', 'createdAt', 'calendar_event_id']
 
 // Reset form o llenarlo si viene una tarea para edición
 watch(() => props.isOpen, (newVal) => {
   if (newVal) {
+    formError.value = ''
     if (props.task) {
       formData.value = { ...props.task }
     } else {
@@ -55,10 +63,47 @@ watch(() => props.isOpen, (newVal) => {
   }
 })
 
+const validate = (data) => {
+  if (!data.titulo.trim()) return 'El título es obligatorio.'
+
+  if (data.fecha_inicio && data.fecha_vencimiento && data.fecha_vencimiento < data.fecha_inicio) {
+    return 'La fecha de vencimiento no puede ser anterior a la de inicio.'
+  }
+
+  if (data.con_hora) {
+    if (!data.fecha_inicio && !data.fecha_vencimiento) {
+      return 'Para definir una hora hay que indicar al menos una fecha.'
+    }
+    if (!data.hora_inicio && !data.hora_vencimiento) {
+      return 'Indica al menos una hora o desactiva "Definir hora específica".'
+    }
+    const sameDay = !data.fecha_inicio || !data.fecha_vencimiento || data.fecha_inicio === data.fecha_vencimiento
+    if (sameDay && data.hora_inicio && data.hora_vencimiento && data.hora_vencimiento < data.hora_inicio) {
+      return 'La hora de vencimiento no puede ser anterior a la de inicio.'
+    }
+  }
+  return ''
+}
+
+// El modal ya NO se cierra solo: lo cierra el padre cuando el guardado tuvo
+// éxito. Si falla, el usuario conserva lo que escribió.
 const handleSubmit = () => {
-  if (!formData.value.titulo.trim()) return
-  emit('save', { ...formData.value })
-  emit('close')
+  if (props.saving) return
+  formError.value = validate(formData.value)
+  if (formError.value) return
+
+  const payload = { ...formData.value, titulo: formData.value.titulo.trim() }
+  INTERNAL_FIELDS.forEach(field => delete payload[field])
+
+  // Sin hora específica no deben quedar horas sueltas guardadas
+  if (!payload.con_hora) {
+    payload.hora_inicio = ''
+    payload.hora_vencimiento = ''
+  }
+  // Sin responsable no hay a quién notificar
+  if (!payload.contacto_id) payload.notificar_responsable = false
+
+  emit('save', payload)
 }
 </script>
 
@@ -203,9 +248,11 @@ const handleSubmit = () => {
           <span>Notificar al responsable por correo</span>
         </div>
 
+        <p v-if="formError" class="form-error" role="alert">{{ formError }}</p>
+
         <div class="form-actions">
           <button type="button" class="btn-cancel" @click="$emit('close')">Cancelar</button>
-          <button type="submit" class="btn-primary">Guardar</button>
+          <button type="submit" class="btn-primary" :disabled="saving">{{ saving ? 'Guardando…' : 'Guardar' }}</button>
         </div>
       </form>
     </div>
@@ -213,6 +260,12 @@ const handleSubmit = () => {
 </template>
 
 <style scoped>
+.form-error {
+  margin: 0;
+  color: var(--q1-color);
+  font-size: 0.85rem;
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;

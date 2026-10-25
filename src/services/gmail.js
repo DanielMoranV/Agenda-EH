@@ -1,29 +1,60 @@
 import { googleFetch } from './google/apiClient'
 
+const pad = (n) => String(n).padStart(2, '0')
+
+/** Escapa texto del usuario antes de meterlo en el HTML del correo. */
+const escapeHtml = (value) => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;')
+
+const localDate = (dateStr, timeStr = '00:00') => {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const [hh, mm] = timeStr.split(':').map(Number)
+  return new Date(y, m - 1, d, hh || 0, mm || 0)
+}
+
+// Formato "YYYYMMDD" (eventos de día completo; el fin es exclusivo)
+const gcalDay = (date) => `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`
+
+// Formato "YYYYMMDDTHHMMSSZ" en UTC (eventos con hora)
+const gcalInstant = (date) => date.toISOString().replace(/-|:|\.\d\d\d/g, '')
+
+/** Parámetro `dates` de la plantilla de Google Calendar, coherente con el evento real. */
+const buildGcalDates = (task) => {
+  const startDate = task.fecha_inicio || task.fecha_vencimiento
+  const endDate = task.fecha_vencimiento || task.fecha_inicio
+  const startTime = task.hora_inicio || task.hora_vencimiento
+  const isTimed = Boolean(task.con_hora && startTime)
+
+  if (!isTimed) {
+    const end = localDate(endDate)
+    end.setDate(end.getDate() + 1)
+    return `${gcalDay(localDate(startDate))}/${gcalDay(end)}`
+  }
+
+  const start = localDate(startDate, startTime)
+  let end = task.hora_vencimiento ? localDate(endDate, task.hora_vencimiento) : null
+  if (!end || end <= start) end = new Date(start.getTime() + 60 * 60 * 1000)
+  return `${gcalInstant(start)}/${gcalInstant(end)}`
+}
+
 // La autenticación (obtención y renovación del token) la gestiona googleFetch.
 export async function sendTaskNotificationEmail(taskData, contactData) {
   const subject = `Nueva Tarea Asignada: ${taskData.titulo}`
-  
+
   // Construir el enlace para añadir a Google Calendar
   let calendarButtonHtml = ''
   if (taskData.fecha_vencimiento || taskData.fecha_inicio) {
     const title = encodeURIComponent(taskData.titulo)
     const details = encodeURIComponent(taskData.descripcion || '')
-    
-    const formatGcalDate = (dateStr, timeStr, isEnd) => {
-      let d = new Date(dateStr + (timeStr ? `T${timeStr}:00` : 'T00:00:00'))
-      if (!timeStr && isEnd) d.setDate(d.getDate() + 1)
-      return d.toISOString().replace(/-|:|\.\d\d\d/g, "")
-    }
+    const gcalLink = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&dates=${buildGcalDates(taskData)}`
 
-    const start = formatGcalDate(taskData.fecha_inicio || taskData.fecha_vencimiento, taskData.con_hora ? taskData.hora_inicio : null, false)
-    const end = formatGcalDate(taskData.fecha_vencimiento || taskData.fecha_inicio, taskData.con_hora ? taskData.hora_vencimiento : null, true)
-    
-    const gcalLink = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&dates=${start}/${end}`
-    
     calendarButtonHtml = `
       <div style="margin-top: 25px;">
-         <a href="${gcalLink}" target="_blank" style="background-color: #8b5cf6; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">📅 Añadir a Google Calendar</a>
+         <a href="${escapeHtml(gcalLink)}" target="_blank" style="background-color: #8b5cf6; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">📅 Añadir a Google Calendar</a>
       </div>
     `
   }
@@ -32,13 +63,13 @@ export async function sendTaskNotificationEmail(taskData, contactData) {
   const htmlBody = `
     <div style="font-family: sans-serif; padding: 20px; color: #333;">
       <h2 style="color: #8b5cf6;">Nueva Tarea Asignada</h2>
-      <p>Hola <strong>${contactData.nombre}</strong>,</p>
+      <p>Hola <strong>${escapeHtml(contactData.nombre)}</strong>,</p>
       <p>Se te ha asignado la siguiente tarea/reunión:</p>
       <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e2e8f0;">
-        <h3 style="margin-top:0; color: #0f172a;">${taskData.titulo}</h3>
-        <p style="color: #475569;">${taskData.descripcion || 'Sin descripción adicional.'}</p>
-        <p><strong>Estado:</strong> ${taskData.estado}</p>
-        ${taskData.fecha_vencimiento ? `<p><strong>Vencimiento:</strong> ${taskData.fecha_vencimiento}</p>` : ''}
+        <h3 style="margin-top:0; color: #0f172a;">${escapeHtml(taskData.titulo)}</h3>
+        <p style="color: #475569;">${escapeHtml(taskData.descripcion) || 'Sin descripción adicional.'}</p>
+        <p><strong>Estado:</strong> ${escapeHtml(taskData.estado)}</p>
+        ${taskData.fecha_vencimiento ? `<p><strong>Vencimiento:</strong> ${escapeHtml(taskData.fecha_vencimiento)}</p>` : ''}
       </div>
       ${calendarButtonHtml}
       <br><br>

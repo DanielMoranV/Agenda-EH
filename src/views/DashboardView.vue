@@ -9,7 +9,7 @@ import { useContacts } from '../composables/useContacts'
 import { useNotifications } from '../composables/useNotifications'
 
 // Extraemos estado y métodos de Firestore
-const { tasks, updateTask, removeTask, loadingTasks } = useTasks()
+const { tasks, updateTask, removeTask } = useTasks()
 const { matchesFilters } = useFilters()
 const { projects } = useProjects()
 const { contacts } = useContacts()
@@ -21,7 +21,7 @@ const mobileTab = ref('q1') // Para la navegación móvil
 const filteredTasks = computed(() => {
   // La lógica de filtrado vive en useFilters para que Matriz y Gantt no puedan
   // divergir (antes estaba duplicada en ambas vistas).
-  const result = tasks.value.filter(matchesFilters)
+  const result = tasks.value.filter(t => matchesFilters(t, { includeOverdue: true }))
 
   // Ordenar por fecha y hora
   return result.sort((a, b) => {
@@ -60,12 +60,18 @@ const openEditModal = (task) => {
   isModalOpen.value = true
 }
 
+const isSavingTask = ref(false)
+
 const saveTask = async (taskData) => {
+  isSavingTask.value = true
   try {
     await updateTask(taskToEdit.value.id, taskData)
     notifySuccess('Tarea actualizada', taskData.titulo)
+    isModalOpen.value = false
   } catch (err) {
     notifyError('No se pudo guardar la tarea', err.message)
+  } finally {
+    isSavingTask.value = false
   }
 }
 
@@ -174,6 +180,7 @@ const toggleTaskStatus = async (task) => {
       :task="taskToEdit"
       :projects="projects"
       :contacts="contacts"
+      :saving="isSavingTask"
       @close="isModalOpen = false"
       @save="saveTask"
     />

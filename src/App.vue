@@ -73,12 +73,19 @@ const newTaskDefaults = computed(() => {
   return defaults
 })
 
+const isSavingTask = ref(false)
+
 const createTask = async (taskData) => {
+  isSavingTask.value = true
   try {
     await addTask(taskData)
     notifySuccess('Tarea creada', taskData.titulo)
+    isCreateModalOpen.value = false
   } catch (err) {
+    // El modal sigue abierto para no perder lo escrito
     notifyError('No se pudo crear la tarea', err.message)
+  } finally {
+    isSavingTask.value = false
   }
 }
 
@@ -207,6 +214,7 @@ watch(user, (currentUser) => {
       :projects="projects"
       :contacts="contacts"
       :defaults="newTaskDefaults"
+      :saving="isSavingTask"
       @close="isCreateModalOpen = false"
       @save="createTask"
     />
