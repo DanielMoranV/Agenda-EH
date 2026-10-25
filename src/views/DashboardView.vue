@@ -9,7 +9,7 @@ import { useContacts } from '../composables/useContacts'
 import { useNotifications } from '../composables/useNotifications'
 
 // Extraemos estado y métodos de Firestore
-const { tasks, updateTask, removeTask, sendNotifications } = useTasks()
+const { tasks, updateTask, removeTask, confirmAndSendNotifications } = useTasks()
 const { matchesFilters } = useFilters()
 const { projects } = useProjects()
 const { contacts } = useContacts()
@@ -86,18 +86,6 @@ const deleteTask = async (task) => {
   }
 }
 
-// Envío manual del aviso por correo, sin abrir la tarea
-const notifyTask = async (task) => {
-  const ids = [task.contacto_id, ...(task.contactos_copia_ids || [])].filter(Boolean)
-  const names = [...new Set(ids)]
-    .map(id => contacts.value.find(c => c.id === id)?.nombre)
-    .filter(Boolean)
-  const who = names.length ? names.join(', ') : 'los destinatarios'
-
-  if (!confirm(`¿Enviar el aviso de "${task.titulo}" por correo a ${who}?`)) return
-  await sendNotifications(task.id)
-}
-
 const toggleTaskStatus = async (task) => {
   const newStatus = task.estado === 'Finalizado' ? 'Pendiente' : 'Finalizado'
   try {
@@ -139,7 +127,7 @@ const toggleTaskStatus = async (task) => {
             <p>Urgente e Importante</p>
           </div>
           <div class="task-list">
-            <TaskCard v-for="task in q1Tasks" :key="task.id" :task="task" :projects="projects" :contacts="contacts" @edit="openEditModal" @delete="deleteTask" @toggle-status="toggleTaskStatus" @notify="notifyTask" />
+            <TaskCard v-for="task in q1Tasks" :key="task.id" :task="task" :projects="projects" :contacts="contacts" @edit="openEditModal" @delete="deleteTask" @toggle-status="toggleTaskStatus" @notify="task => confirmAndSendNotifications(task, contacts)" />
           </div>
         </div>
         
@@ -153,7 +141,7 @@ const toggleTaskStatus = async (task) => {
             <p>Importante, No Urgente</p>
           </div>
           <div class="task-list">
-            <TaskCard v-for="task in q2Tasks" :key="task.id" :task="task" :projects="projects" :contacts="contacts" @edit="openEditModal" @delete="deleteTask" @toggle-status="toggleTaskStatus" @notify="notifyTask" />
+            <TaskCard v-for="task in q2Tasks" :key="task.id" :task="task" :projects="projects" :contacts="contacts" @edit="openEditModal" @delete="deleteTask" @toggle-status="toggleTaskStatus" @notify="task => confirmAndSendNotifications(task, contacts)" />
           </div>
         </div>
         
@@ -167,7 +155,7 @@ const toggleTaskStatus = async (task) => {
             <p>Urgente, No Importante</p>
           </div>
           <div class="task-list">
-            <TaskCard v-for="task in q3Tasks" :key="task.id" :task="task" :projects="projects" :contacts="contacts" @edit="openEditModal" @delete="deleteTask" @toggle-status="toggleTaskStatus" @notify="notifyTask" />
+            <TaskCard v-for="task in q3Tasks" :key="task.id" :task="task" :projects="projects" :contacts="contacts" @edit="openEditModal" @delete="deleteTask" @toggle-status="toggleTaskStatus" @notify="task => confirmAndSendNotifications(task, contacts)" />
           </div>
         </div>
         
@@ -181,7 +169,7 @@ const toggleTaskStatus = async (task) => {
             <p>Ni Urgente Ni Importante</p>
           </div>
           <div class="task-list">
-            <TaskCard v-for="task in q4Tasks" :key="task.id" :task="task" :projects="projects" :contacts="contacts" @edit="openEditModal" @delete="deleteTask" @toggle-status="toggleTaskStatus" @notify="notifyTask" />
+            <TaskCard v-for="task in q4Tasks" :key="task.id" :task="task" :projects="projects" :contacts="contacts" @edit="openEditModal" @delete="deleteTask" @toggle-status="toggleTaskStatus" @notify="task => confirmAndSendNotifications(task, contacts)" />
           </div>
         </div>
       </div>

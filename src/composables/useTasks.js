@@ -255,6 +255,18 @@ export function useTasks() {
     await notifyRecipients(task, keys)
   }
 
+  /** Pide confirmación (nombrando a los destinatarios) y envía el aviso. */
+  const confirmAndSendNotifications = async (task, contacts = []) => {
+    const ids = [task.contacto_id, ...(task.contactos_copia_ids || [])].filter(Boolean)
+    const names = [...new Set(ids)]
+      .map(id => contacts.find(c => c.id === id)?.nombre)
+      .filter(Boolean)
+    const who = names.length ? names.join(', ') : 'los destinatarios'
+
+    if (!confirm(`¿Enviar el aviso de "${task.titulo}" por correo a ${who}?`)) return
+    await sendNotifications(task.id)
+  }
+
   const removeTask = async (taskId) => {
     const currentTask = tasks.value.find(t => t.id === taskId)
 
@@ -282,6 +294,7 @@ export function useTasks() {
     addTask,
     updateTask,
     sendNotifications,
+    confirmAndSendNotifications,
     removeTask
   }
 }

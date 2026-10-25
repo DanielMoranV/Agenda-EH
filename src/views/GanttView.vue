@@ -7,7 +7,7 @@ import { useContacts } from '../composables/useContacts'
 import { useNotifications } from '../composables/useNotifications'
 import { useFilters, parseDateTime } from '../composables/useFilters'
 
-const { tasks, updateTask } = useTasks()
+const { tasks, updateTask, confirmAndSendNotifications } = useTasks()
 const { projects } = useProjects()
 const { contacts } = useContacts()
 const { notifySuccess, notifyError } = useNotifications()
@@ -354,6 +354,12 @@ const openEditModal = (task) => {
   isTaskModalOpen.value = true
 }
 
+// Envío manual del aviso por correo, sin abrir la tarea
+const hasRecipients = (task) =>
+  Boolean(task.contacto_id) || (task.contactos_copia_ids || []).length > 0
+
+const notifyTask = (task) => confirmAndSendNotifications(task, contacts.value)
+
 const saveTask = async (taskData) => {
   try {
     await updateTask(taskToEdit.value.id, taskData)
@@ -480,22 +486,35 @@ const forwardSidebarWheel = (event) => {
         <div class="gantt-sidebar">
           <div class="sidebar-header">Tarea / Proyecto</div>
           <div class="sidebar-body" ref="sidebarBodyEl" @wheel.prevent="forwardSidebarWheel">
-            <button
+            <div
               class="sidebar-row"
               :class="{ 'is-project-start': task.isProjectStart }"
               v-for="task in visibleTasks"
               :key="'side-'+task.id"
-              :title="`Editar ${task.titulo}`"
-              @click="openEditModal(task)"
             >
-              <div class="task-info">
-                <div class="task-title-wrap">
-                  <span class="quadrant-dot" :class="task.quadrantClass" :title="task.quadrantName"></span>
-                  <span class="task-title" :title="task.titulo">{{ task.titulo }}</span>
+              <button
+                class="sidebar-main"
+                :title="`Editar ${task.titulo}`"
+                @click="openEditModal(task)"
+              >
+                <div class="task-info">
+                  <div class="task-title-wrap">
+                    <span class="quadrant-dot" :class="task.quadrantClass" :title="task.quadrantName"></span>
+                    <span class="task-title" :title="task.titulo">{{ task.titulo }}</span>
+                  </div>
+                  <span class="task-project">{{ task.projectName }}</span>
                 </div>
-                <span class="task-project">{{ task.projectName }}</span>
-              </div>
-            </button>
+              </button>
+              <button
+                v-if="hasRecipients(task)"
+                class="row-mail"
+                title="Enviar / reenviar aviso por correo"
+                aria-label="Enviar o reenviar aviso por correo"
+                @click="notifyTask(task)"
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -732,12 +751,47 @@ const forwardSidebarWheel = (event) => {
   width: 100%;
   display: flex;
   align-items: center;
-  padding: 0 1rem;
+  padding: 0 0.5rem 0 0;
   border-bottom: 1px solid var(--hover-wash);
   background: transparent;
   font-size: inherit;
   text-align: left;
   transition: background 0.15s;
+}
+
+/* Zona de edición: ocupa todo el ancho útil de la fila */
+.sidebar-main {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 0 0 1rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.row-mail {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.row-mail:hover {
+  background: var(--accent-soft-bg);
+  color: var(--text-primary);
 }
 
 .sidebar-row:hover {
@@ -1000,7 +1054,11 @@ const forwardSidebarWheel = (event) => {
   }
 
   .sidebar-row {
-    padding: 0 0.6rem;
+    padding: 0 0.3rem 0 0;
+  }
+
+  .sidebar-main {
+    padding-left: 0.6rem;
   }
 
   .task-title {
