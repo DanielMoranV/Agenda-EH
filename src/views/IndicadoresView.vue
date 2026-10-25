@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useTasks } from '../composables/useTasks'
 import { useProjects } from '../composables/useProjects'
 import { useContacts } from '../composables/useContacts'
@@ -303,12 +303,48 @@ const exportCsv = () => {
 }
 
 const printReport = () => window.print()
+
+// --- Cabecera del informe impreso (solo se ve en el papel / PDF) ---
+const scopeProjectLabel = computed(() => {
+  if (filterProject.value === 'Todos') return 'Todos'
+  return projects.value.find(p => p.id === filterProject.value)?.nombre || 'Todos'
+})
+
+const scopeContactLabel = computed(() => {
+  if (filterContact.value === 'Todos') return 'Todos'
+  return contacts.value.find(c => c.id === filterContact.value)?.nombre || 'Todos'
+})
+
+// Se refresca justo antes de imprimir (botón o Ctrl+P), no al abrir la vista
+const generatedAt = ref('')
+const stampGeneratedAt = () => {
+  generatedAt.value = new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })
+}
+
+onMounted(() => {
+  stampGeneratedAt()
+  window.addEventListener('beforeprint', stampGeneratedAt)
+})
+onBeforeUnmount(() => window.removeEventListener('beforeprint', stampGeneratedAt))
 </script>
 
 <template>
   <div class="indicadores-view">
     <div class="glass-panel indicadores-container">
-      <div class="view-header">
+      <header class="print-header">
+        <h1>Indicadores de cumplimiento — {{ monthLabel }}</h1>
+        <p>
+          Proyecto: <strong>{{ scopeProjectLabel }}</strong> ·
+          Responsable: <strong>{{ scopeContactLabel }}</strong> ·
+          Generado el {{ generatedAt }}
+        </p>
+        <p>
+          Cada tarea se mide en el mes de su fecha de vencimiento; si no tiene,
+          en el de su fecha de inicio. Agenda EH.
+        </p>
+      </header>
+
+      <div class="view-header no-print">
         <div class="view-header-text">
           <h2>Indicadores de cumplimiento</h2>
           <p>
@@ -442,9 +478,9 @@ const printReport = () => window.print()
         </section>
 
         <!-- Un bloque por proyecto o por responsable -->
-        <div class="groups-header no-print">
+        <div class="groups-header">
           <h3>Detalle por {{ groupBy === 'proyecto' ? 'proyecto' : 'responsable' }}</h3>
-          <div class="segmented" role="group" aria-label="Agrupar por">
+          <div class="segmented no-print" role="group" aria-label="Agrupar por">
             <button :class="{ active: groupBy === 'proyecto' }" :aria-pressed="groupBy === 'proyecto'" @click="groupBy = 'proyecto'">Proyecto</button>
             <button :class="{ active: groupBy === 'responsable' }" :aria-pressed="groupBy === 'responsable'" @click="groupBy = 'responsable'">Responsable</button>
           </div>
@@ -1209,25 +1245,203 @@ const printReport = () => window.print()
   }
 }
 
-/* --- Impresión: solo el informe --- */
+/* --- Impresión / PDF: solo el informe --- */
+.print-header {
+  display: none;
+}
+
+@page {
+  size: A4;
+  margin: 14mm 12mm 16mm;
+
+  @bottom-right {
+    content: counter(page) " / " counter(pages);
+    font-size: 8pt;
+    color: #5a6675;
+  }
+}
+
 @media print {
   .no-print {
     display: none !important;
   }
 
+  /* Chrome del resto de la app y fondos del tema (el oscuro saldría ilegible) */
   :global(.corp-header),
   :global(.toast-host) {
     display: none !important;
   }
 
+  :global(html),
+  :global(body) {
+    background: #ffffff !important;
+    min-height: 0;
+  }
+
+  :global(.app-layout) {
+    display: block;
+    min-height: 0;
+    max-width: none;
+    padding: 0;
+  }
+
+  :global(.app-main) {
+    display: block;
+  }
+
+  /* Siempre en claro, también si la pantalla está en tema oscuro */
+  .indicadores-view {
+    --bg-base: #ffffff;
+    --bg-surface: #ffffff;
+    --bg-header: #f5f7fa;
+    --bg-inset: #e9edf2;
+    --text-primary: #1c2531;
+    --text-secondary: #3f4a59;
+    --text-muted: #5a6675;
+    --border-color: #c4ccd8;
+    --accent-primary: #35618e;
+    --success-color: #3f7d5e;
+    --warning-color: #97701f;
+    --danger-color: #a8524a;
+    --q1-color: #a8524a;
+    --q2-color: #35618e;
+    --q3-color: #97701f;
+    --q4-color: #6b7787;
+    --hover-wash: transparent;
+
+    display: block;
+    height: auto;
+    color: var(--text-primary);
+    font-size: 10pt;
+    /* Sin esto el navegador omite los fondos y las barras salen vacías */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   .indicadores-container {
+    display: flex;
+    flex: none;
+    height: auto;
     overflow: visible;
+    padding: 0;
+    gap: 10pt;
+    background: none;
+    border: none;
     box-shadow: none;
   }
 
-  .project-card,
+  .print-header {
+    display: block;
+    padding-bottom: 8pt;
+    border-bottom: 2px solid var(--accent-primary);
+  }
+
+  .print-header h1 {
+    margin: 0 0 4pt 0;
+    font-size: 16pt;
+    color: var(--text-primary);
+    text-transform: capitalize;
+  }
+
+  .print-header p {
+    margin: 0 0 2pt 0;
+    font-size: 8.5pt;
+    color: var(--text-secondary);
+  }
+
+  /* El diseño móvil (max-width: 768px) se activa en papel A4: lo deshacemos */
+  .summary {
+    grid-template-columns: minmax(150px, 1fr) 3fr;
+    gap: 8pt;
+  }
+
+  .hero {
+    padding: 10pt;
+  }
+
+  .hero-value {
+    font-size: 28pt;
+  }
+
+  .stat-tiles {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8pt;
+  }
+
+  .stat-tile {
+    padding: 8pt;
+  }
+
+  .stat-value {
+    font-size: 15pt;
+  }
+
+  .insights {
+    grid-template-columns: 1fr 1fr;
+    gap: 8pt;
+  }
+
+  .insight-card,
+  .project-card {
+    padding: 10pt;
+    box-shadow: none;
+  }
+
   .insight-card {
     break-inside: avoid;
+  }
+
+  .trend-col {
+    cursor: default;
+    color: var(--text-secondary);
+  }
+
+  .trend-track {
+    height: 80px;
+  }
+
+  .quadrant-row {
+    grid-template-columns: minmax(80px, 1.2fr) 1.5fr auto;
+  }
+
+  .quadrant-bar-track {
+    grid-column: auto;
+    order: 0;
+  }
+
+  .groups-header {
+    break-after: avoid;
+  }
+
+  .groups-header h3 {
+    font-size: 12pt;
+  }
+
+  /* Un proyecto largo puede partirse entre páginas, pero su cabecera no queda
+     sola al pie ni una fila se corta por la mitad */
+  .project-header,
+  .meter-wrap,
+  .status-counts {
+    break-after: avoid;
+  }
+
+  .task-table {
+    display: table;
+    overflow: visible;
+    white-space: normal;
+    font-size: 9pt;
+  }
+
+  .task-table thead {
+    display: table-header-group;
+  }
+
+  .task-table tr {
+    break-inside: avoid;
+  }
+
+  .tag {
+    font-size: 7pt;
   }
 }
 </style>
