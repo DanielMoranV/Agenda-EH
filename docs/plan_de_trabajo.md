@@ -55,6 +55,7 @@ Este plan de trabajo desglosa las 5 fases establecidas en el **Documento de Espe
 - [x] **6.3 Tokens de Google:** Renovación proactiva y bajo demanda con Google Identity Services y reconexión con un clic (`useGoogleToken`).
 - [x] **6.4 Notificación por correo (Gmail):** Aviso al responsable, con HTML escapado y enlace a Calendar coherente con el evento.
 - [x] **6.4b Destinatarios en copia:** Una tarea puede avisar por correo, además del responsable, a otros contactos (`contactos_copia_ids`); un correo por persona con texto según su rol, y solo a quien aún no lo había recibido.
+- [x] **6.4c Indicadores ampliados:** tareas vencidas, comparativa con el mes anterior, tendencia de 6 meses, agrupación por proyecto o responsable, distribución por cuadrante, cumplimiento a tiempo (campo `finalizado_at`, solo desde que existe), aviso de tareas sin fecha y exportación CSV / impresión.
 - [x] **6.5 Temas claro/oscuro** y sistema de notificaciones (toasts).
 - [x] **6.6 Revisión de código (oct. 2026):** Regla de Firestore con `user_id` inmutable, fin exclusivo de eventos de día completo, un solo listener por colección, borrado de proyecto/contacto que desvincula sus tareas, validación del formulario y renovación de token sin bloqueos.
 - [ ] **6.7 Pruebas automatizadas:** Cubrir al menos `buildEventPayload`, `matchesFilters` y la lógica de `updateTask`.

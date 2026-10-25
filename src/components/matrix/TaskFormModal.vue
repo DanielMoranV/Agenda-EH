@@ -82,7 +82,7 @@ const hasRecipients = computed(() =>
 
 // Campos que gestiona la app, no el formulario: no deben viajar en la edición
 // (calendar_event_id del snapshot podía pisar un ID recién escrito).
-const INTERNAL_FIELDS = ['id', 'user_id', 'createdAt', 'calendar_event_id']
+const INTERNAL_FIELDS = ['id', 'user_id', 'createdAt', 'calendar_event_id', 'finalizado_at']
 
 // Reset form o llenarlo si viene una tarea para edición
 watch(() => props.isOpen, (newVal) => {

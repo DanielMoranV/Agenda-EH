@@ -48,6 +48,13 @@ const syncWithGoogle = async (operation, { context }) => {
   }
 }
 
+// "YYYY-MM-DD" de hoy en horario local (es lo que comparan los indicadores)
+const todayISO = () => {
+  const now = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+}
+
 const { items: tasks, loading: loadingTasks, error } = createCollectionStore({
   collectionName: 'tareas',
   errorKey: 'tasks-stream-error',
@@ -129,6 +136,7 @@ export function useTasks() {
     try {
       docRef = await addDoc(collection(db, 'tareas'), {
         ...taskData,
+        finalizado_at: taskData.estado === 'Finalizado' ? todayISO() : null,
         calendar_event_id: null,
         user_id: user.value.uid,
         createdAt: new Date()
@@ -163,6 +171,18 @@ export function useTasks() {
     const currentTask = tasks.value.find(t => t.id === taskId)
     const dataToSave = { ...updates }
     delete dataToSave.id
+
+    // Fecha de finalización (para medir entregas a tiempo): se fija al pasar a
+    // Finalizado y se borra si la tarea se reabre. Si ya estaba finalizada se respeta.
+    if ('estado' in updates) {
+      if (updates.estado === 'Finalizado') {
+        // Solo al PASAR a Finalizado: una tarea ya cerrada antes de que existiera
+        // el registro queda "sin registro" en vez de inventar una fecha.
+        if (currentTask?.estado !== 'Finalizado') dataToSave.finalizado_at = todayISO()
+      } else {
+        dataToSave.finalizado_at = null
+      }
+    }
 
     // 1) Persistir en Firestore primero.
     try {
