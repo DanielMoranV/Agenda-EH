@@ -57,32 +57,67 @@ const { items: tasks, loading: loadingTasks, error } = createCollectionStore({
 export function useTasks() {
   const { user } = useAuth()
 
-  /** Envía el correo de notificación al responsable. Nunca bloquea el guardado. */
-  const notifyAssignee = async (taskData, contactId) => {
-    if (!contactId) return
+  /** Claves "rol:id" de quienes deben recibir aviso según el estado de la tarea. */
+  const recipientKeys = (task) => {
+    const keys = new Set()
+    if (!task?.notificar_responsable) return keys
+    if (task.contacto_id) keys.add(`responsable:${task.contacto_id}`)
+    ;(task.contactos_copia_ids || []).forEach((id) => {
+      // Si además es el responsable, ya recibe el aviso como tal
+      if (id && id !== task.contacto_id) keys.add(`copia:${id}`)
+    })
+    return keys
+  }
 
-    try {
-      const contactSnapshot = await getDoc(doc(db, 'contactos', contactId))
-      if (!contactSnapshot.exists()) {
-        notify({ type: 'warning', title: 'No se envió el correo', message: 'El contacto asignado ya no existe.' })
-        return
-      }
-      const contactData = contactSnapshot.data()
-      if (!contactData.email) {
-        notify({ type: 'warning', title: 'No se envió el correo', message: `${contactData.nombre || 'El contacto'} no tiene email registrado.` })
-        return
-      }
+  /**
+   * Envía un correo por destinatario (responsable y copias). Nunca bloquea el
+   * guardado: los problemas se avisan por notificación y el resto sigue.
+   */
+  const notifyRecipients = async (taskData, keys) => {
+    if (!keys.length) return
 
-      const result = await syncWithGoogle(
-        () => sendTaskNotificationEmail(taskData, contactData),
-        { context: `El aviso por correo a ${contactData.nombre || contactData.email}` }
-      )
-      if (result.ok) {
-        notify({ type: 'success', title: 'Aviso enviado', message: `Se notificó por correo a ${contactData.nombre || contactData.email}.` })
+    // Quien lleva la tarea, para decírselo a los que van en copia
+    let assigneeName = ''
+    if (taskData.contacto_id) {
+      try {
+        const snap = await getDoc(doc(db, 'contactos', taskData.contacto_id))
+        if (snap.exists()) assigneeName = snap.data().nombre || ''
+      } catch { /* solo afecta al texto del correo */ }
+    }
+
+    const sent = []
+    for (const key of keys) {
+      const [role, contactId] = key.split(':')
+      try {
+        const snap = await getDoc(doc(db, 'contactos', contactId))
+        if (!snap.exists()) {
+          notify({ type: 'warning', title: 'No se envió el correo', message: 'Un contacto del aviso ya no existe.' })
+          continue
+        }
+        const contactData = snap.data()
+        const label = contactData.nombre || contactData.email || 'el contacto'
+        if (!contactData.email) {
+          notify({ type: 'warning', title: 'No se envió el correo', message: `${label} no tiene email registrado.` })
+          continue
+        }
+
+        const result = await syncWithGoogle(
+          () => sendTaskNotificationEmail(taskData, contactData, { role, assigneeName }),
+          { context: `El aviso por correo a ${label}` }
+        )
+        if (result.ok) {
+          sent.push(label)
+        } else if (result.error instanceof GoogleAuthRequiredError) {
+          break // sin autorización de Google, el resto fallaría igual
+        }
+      } catch (err) {
+        console.error('No se pudo preparar la notificación por correo:', err)
+        notify({ type: 'warning', title: 'No se envió el correo', message: describeFirestoreError(err) })
       }
-    } catch (err) {
-      console.error('No se pudo preparar la notificación por correo:', err)
-      notify({ type: 'warning', title: 'No se envió el correo', message: describeFirestoreError(err) })
+    }
+
+    if (sent.length) {
+      notify({ type: 'success', title: 'Aviso enviado', message: `Se notificó por correo a ${sent.join(', ')}.` })
     }
   }
 
@@ -119,9 +154,7 @@ export function useTasks() {
     }
 
     // 3) Notificación por correo (tampoco crítica).
-    if (taskData.notificar_responsable && taskData.contacto_id) {
-      await notifyAssignee(taskData, taskData.contacto_id)
-    }
+    await notifyRecipients(taskData, [...recipientKeys(taskData)])
 
     return docRef.id
   }
@@ -187,13 +220,17 @@ export function useTasks() {
       }
     }
 
-    // 3) Notificación por correo. El formulario de edición reenvía todos los
-    // campos (incluido el flag), así que además comprobamos que se haya ACTIVADO
-    // ahora o que el responsable sea otro; si no, cada edición reenviaría el aviso.
-    const flagTurnedOn = updates.notificar_responsable && !currentTask?.notificar_responsable
-    const assigneeChanged = updates.contacto_id !== currentTask?.contacto_id
-    if (updates.notificar_responsable && updates.contacto_id && (flagTurnedOn || assigneeChanged)) {
-      await notifyAssignee({ ...currentTask, ...updates }, updates.contacto_id)
+    // 3) Notificación por correo. Solo reaccionamos si la actualización toca los
+    // campos del aviso, y avisamos únicamente a quien NO lo había recibido ya
+    // (nuevo destinatario, rol distinto o aviso recién activado): así editar el
+    // título o arrastrar en el calendario no reenvía nada.
+    const touchesRecipients = ['notificar_responsable', 'contacto_id', 'contactos_copia_ids']
+      .some((field) => field in updates)
+    if (touchesRecipients) {
+      const alreadyNotified = recipientKeys(currentTask)
+      const pending = [...recipientKeys({ ...currentTask, ...updates })]
+        .filter((key) => !alreadyNotified.has(key))
+      await notifyRecipients({ ...currentTask, ...updates }, pending)
     }
   }
 

@@ -87,9 +87,19 @@ const buildGcalDates = (task) => {
 }
 
 // La autenticación (obtención y renovación del token) la gestiona googleFetch.
-export async function sendTaskNotificationEmail(taskData, contactData) {
+//
+// `role` decide el texto: 'responsable' (la tarea es suya) o 'copia' (se le
+// informa de una tarea que lleva otra persona, `assigneeName`).
+export async function sendTaskNotificationEmail(taskData, contactData, { role = 'responsable', assigneeName = '' } = {}) {
+  const isCopy = role === 'copia'
   const schedule = describeSchedule(taskData)
-  const subject = `Nueva Tarea Asignada: ${taskData.titulo}${schedule ? ` (${schedule.short})` : ''}`
+  const subjectPrefix = isCopy ? 'Tarea en copia' : 'Nueva Tarea Asignada'
+  const subject = `${subjectPrefix}: ${taskData.titulo}${schedule ? ` (${schedule.short})` : ''}`
+
+  const heading = isCopy ? 'Tarea en copia' : 'Nueva Tarea Asignada'
+  const intro = isCopy
+    ? `Se te informa de la siguiente tarea/reunión${assigneeName ? `, a cargo de <strong>${escapeHtml(assigneeName)}</strong>` : ''}:`
+    : 'Se te ha asignado la siguiente tarea/reunión:'
 
   // Construir el enlace para añadir a Google Calendar
   let calendarButtonHtml = ''
@@ -108,9 +118,9 @@ export async function sendTaskNotificationEmail(taskData, contactData) {
   // Construir el cuerpo HTML
   const htmlBody = `
     <div style="font-family: sans-serif; padding: 20px; color: #333;">
-      <h2 style="color: #8b5cf6;">Nueva Tarea Asignada</h2>
+      <h2 style="color: #8b5cf6;">${heading}</h2>
       <p>Hola <strong>${escapeHtml(contactData.nombre)}</strong>,</p>
-      <p>Se te ha asignado la siguiente tarea/reunión:</p>
+      <p>${intro}</p>
       <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e2e8f0;">
         <h3 style="margin-top:0; color: #0f172a;">${escapeHtml(taskData.titulo)}</h3>
         <p style="color: #475569;">${escapeHtml(taskData.descripcion) || 'Sin descripción adicional.'}</p>

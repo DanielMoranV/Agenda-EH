@@ -51,13 +51,27 @@ export function useContacts() {
     try {
       // Las tareas que apuntaban a este registro quedarían con un id colgante:
       // las desvinculamos en el mismo lote que el borrado.
-      const linked = await getDocs(query(
+      // Se leen las tareas del usuario (solo por user_id, sin índices extra) y se
+      // filtra aquí: el contacto puede ser responsable o ir en copia.
+      const mine = await getDocs(query(
         collection(db, 'tareas'),
-        where('user_id', '==', user.value.uid),
-        where('contacto_id', '==', contactId)
+        where('user_id', '==', user.value.uid)
       ))
       const batch = writeBatch(db)
-      linked.forEach((taskDoc) => batch.update(taskDoc.ref, { contacto_id: '', notificar_responsable: false }))
+      mine.forEach((taskDoc) => {
+        const task = taskDoc.data()
+        const wasResponsible = task.contacto_id === contactId
+        const copies = task.contactos_copia_ids || []
+        if (!wasResponsible && !copies.includes(contactId)) return
+
+        const remainingCopies = copies.filter((id) => id !== contactId)
+        const stillHasResponsible = Boolean(task.contacto_id) && !wasResponsible
+        const changes = { contactos_copia_ids: remainingCopies }
+        if (wasResponsible) changes.contacto_id = ''
+        // Sin nadie a quien avisar, el aviso por correo deja de tener sentido
+        if (!stillHasResponsible && remainingCopies.length === 0) changes.notificar_responsable = false
+        batch.update(taskDoc.ref, changes)
+      })
       batch.delete(doc(db, 'contactos', contactId))
       await batch.commit()
     } catch (err) {

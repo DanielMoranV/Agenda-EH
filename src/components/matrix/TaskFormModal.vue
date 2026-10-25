@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
   isOpen: Boolean,
@@ -41,11 +41,44 @@ const defaultTask = {
   hora_vencimiento: '',
   proyecto_id: '',
   contacto_id: '',
+  contactos_copia_ids: [],
   notificar_responsable: false
 }
 
 const formData = ref({ ...defaultTask })
 const formError = ref('')
+
+// --- Destinatarios en copia ---
+const copyToAdd = ref('')
+
+// Solo contactos con email, sin el responsable ni los ya añadidos
+const copyCandidates = computed(() =>
+  props.contacts.filter(c =>
+    c.email &&
+    c.id !== formData.value.contacto_id &&
+    !formData.value.contactos_copia_ids.includes(c.id)
+  )
+)
+
+const copyContacts = computed(() =>
+  formData.value.contactos_copia_ids.map(id => ({
+    id,
+    nombre: props.contacts.find(c => c.id === id)?.nombre || 'Contacto eliminado'
+  }))
+)
+
+const addCopy = (id) => {
+  if (id && !formData.value.contactos_copia_ids.includes(id)) formData.value.contactos_copia_ids.push(id)
+  copyToAdd.value = '' // vuelve al placeholder para poder añadir otro
+}
+
+const removeCopy = (id) => {
+  formData.value.contactos_copia_ids = formData.value.contactos_copia_ids.filter(c => c !== id)
+}
+
+const hasRecipients = computed(() =>
+  Boolean(formData.value.contacto_id) || formData.value.contactos_copia_ids.length > 0
+)
 
 // Campos que gestiona la app, no el formulario: no deben viajar en la edición
 // (calendar_event_id del snapshot podía pisar un ID recién escrito).
@@ -56,10 +89,11 @@ watch(() => props.isOpen, (newVal) => {
   if (newVal) {
     formError.value = ''
     if (props.task) {
-      formData.value = { ...props.task }
+      formData.value = { ...props.task, contactos_copia_ids: [...(props.task.contactos_copia_ids || [])] }
     } else {
-      formData.value = { ...defaultTask, ...props.defaults }
+      formData.value = { ...defaultTask, contactos_copia_ids: [], ...props.defaults }
     }
+    copyToAdd.value = ''
   }
 })
 
@@ -100,8 +134,12 @@ const handleSubmit = () => {
     payload.hora_inicio = ''
     payload.hora_vencimiento = ''
   }
-  // Sin responsable no hay a quién notificar
-  if (!payload.contacto_id) payload.notificar_responsable = false
+  // El responsable no va también en copia; y los contactos borrados sobran
+  payload.contactos_copia_ids = payload.contactos_copia_ids.filter(id =>
+    id !== payload.contacto_id && props.contacts.some(c => c.id === id)
+  )
+  // Sin nadie a quien avisar, no hay aviso
+  if (!payload.contacto_id && payload.contactos_copia_ids.length === 0) payload.notificar_responsable = false
 
   emit('save', payload)
 }
@@ -240,12 +278,28 @@ const handleSubmit = () => {
           </div>
         </div>
 
-        <div class="form-group toggle-group toggle-hora" v-if="formData.contacto_id">
+        <div class="form-group">
+          <label for="copia">Informar también a (Opcional)</label>
+          <div class="copy-picker">
+            <select id="copia" v-model="copyToAdd" @change="addCopy($event.target.value)">
+              <option value="">{{ copyCandidates.length ? '-- Añadir contacto --' : '-- No hay más contactos con email --' }}</option>
+              <option v-for="c in copyCandidates" :key="c.id" :value="c.id">{{ c.nombre }}</option>
+            </select>
+          </div>
+          <ul v-if="copyContacts.length" class="copy-chips">
+            <li v-for="c in copyContacts" :key="c.id" class="copy-chip">
+              {{ c.nombre }}
+              <button type="button" :aria-label="'Quitar a ' + c.nombre" @click="removeCopy(c.id)">✕</button>
+            </li>
+          </ul>
+        </div>
+
+        <div class="form-group toggle-group toggle-hora" v-if="hasRecipients">
           <label class="toggle">
             <input type="checkbox" v-model="formData.notificar_responsable">
             <span class="slider"></span>
           </label>
-          <span>Notificar al responsable por correo</span>
+          <span>Notificar por correo (responsable y contactos en copia)</span>
         </div>
 
         <p v-if="formError" class="form-error" role="alert">{{ formError }}</p>
@@ -260,6 +314,39 @@ const handleSubmit = () => {
 </template>
 
 <style scoped>
+.copy-chips {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+
+.copy-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.3rem 0.2rem 0.65rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--accent-soft-bg);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+}
+
+.copy-chip button {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+}
+
+.copy-chip button:hover {
+  color: var(--text-primary);
+}
 .form-error {
   margin: 0;
   color: var(--q1-color);

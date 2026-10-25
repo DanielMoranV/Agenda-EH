@@ -60,6 +60,8 @@ const projectName = computed(() => {
   return project ? project.nombre : null
 })
 
+const copyCount = computed(() => (props.task.contactos_copia_ids || []).length)
+
 const contactName = computed(() => {
   if (!props.task.contacto_id) return null
   const contact = props.contacts.find(c => c.id === props.task.contacto_id)
@@ -93,6 +95,7 @@ const contactName = computed(() => {
       <span class="meta-tag" :class="statusClass">{{ statusIcon }} {{ task.estado || 'Pendiente' }}</span>
       <span v-if="projectName" class="meta-tag project-tag">📁 {{ projectName }}</span>
       <span v-if="contactName" class="meta-tag contact-tag">👤 {{ contactName }}</span>
+      <span v-if="copyCount" class="meta-tag contact-tag" :title="copyCount + ' contacto(s) en copia'">✉️ +{{ copyCount }}</span>
     </div>
 
     <p v-if="task.descripcion" class="task-desc">{{ task.descripcion }}</p>
