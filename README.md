@@ -44,12 +44,12 @@ El desarrollo siguió las 5 fases del [documento técnico](docs/Documento_Tecnic
 
 Sobre el alcance original del plan, ya en producción:
 
-- **5 vistas completas**: Matriz (dashboard), Calendario, Gantt, Proyectos y Contactos — el plan solo contemplaba matriz + calendario.
+- **6 vistas completas**: Matriz (dashboard), Calendario, Gantt, Indicadores, Proyectos y Contactos — el plan solo contemplaba matriz + calendario.
 - **Sistema de temas** claro/oscuro/sistema con paleta accesible (WCAG AA) — no estaba en el alcance original.
 - **Capa de resiliencia de sesión** (`useGoogleToken`): renovación proactiva, bajo demanda, reintento tras 401 y reconexión al recuperar foco/red.
 - **Filtros compartidos** (estado, proyecto, responsable, periodo) entre Matriz y Gantt con un único predicado (`matchesFilters`).
 
-`docs/plan_de_trabajo.md` quedó como bitácora histórica de planificación; las casillas sin marcar reflejan el checklist original, no el estado actual del código.
+`docs/plan_de_trabajo.md` está al día: las fases 1–5 marcan lo completado, la fase 6 recoge el alcance adicional y los pendientes (pruebas automatizadas, linter, carga diferida, token fuera de `localStorage`).
 
 ---
 

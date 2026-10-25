@@ -22,6 +22,51 @@ const gcalDay = (date) => `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad
 // Formato "YYYYMMDDTHHMMSSZ" en UTC (eventos con hora)
 const gcalInstant = (date) => date.toISOString().replace(/-|:|\.\d\d\d/g, '')
 
+
+const TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || ''
+
+const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1)
+
+/** "domingo 25 de octubre de 2026" (con o sin año) */
+const longDate = (dateStr, { withYear = true } = {}) =>
+  localDate(dateStr).toLocaleDateString('es-ES', {
+    weekday: 'long', day: 'numeric', month: 'long', ...(withYear ? { year: 'numeric' } : {})
+  }).replace(',', '') // "domingo, 25 de…" -> "domingo 25 de…"
+
+/** "25 oct" para el asunto */
+const shortDate = (dateStr) =>
+  localDate(dateStr).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }).replace('.', '')
+
+/**
+ * Describe CUÁNDO es la tarea a partir de los mismos criterios que usa el
+ * evento de Calendar (inicio = fecha_inicio || fecha_vencimiento, etc.).
+ * @returns {{startDate, endDate, startTime, endTime, text, short}|null}
+ */
+const describeSchedule = (task) => {
+  const startDate = task.fecha_inicio || task.fecha_vencimiento
+  const endDate = task.fecha_vencimiento || task.fecha_inicio
+  if (!startDate) return null
+
+  const startTime = task.con_hora ? (task.hora_inicio || task.hora_vencimiento || '') : ''
+  const endTime = task.con_hora ? (task.hora_vencimiento || '') : ''
+  const sameDay = startDate === endDate
+
+  let text
+  if (sameDay) {
+    text = capitalize(longDate(startDate))
+    if (startTime && endTime && endTime !== startTime) text += ` · ${startTime} – ${endTime}`
+    else if (startTime) text += ` · ${startTime}`
+  } else {
+    const from = longDate(startDate, { withYear: false }) + (startTime ? ` a las ${startTime}` : '')
+    const to = longDate(endDate) + (endTime ? ` a las ${endTime}` : '')
+    text = `Del ${from} al ${to}`
+  }
+  if (startTime && TIME_ZONE) text += ` (${TIME_ZONE})`
+
+  const short = shortDate(startDate) + (startTime ? `, ${startTime}` : '')
+  return { text, short }
+}
+
 /** Parámetro `dates` de la plantilla de Google Calendar, coherente con el evento real. */
 const buildGcalDates = (task) => {
   const startDate = task.fecha_inicio || task.fecha_vencimiento
@@ -43,7 +88,8 @@ const buildGcalDates = (task) => {
 
 // La autenticación (obtención y renovación del token) la gestiona googleFetch.
 export async function sendTaskNotificationEmail(taskData, contactData) {
-  const subject = `Nueva Tarea Asignada: ${taskData.titulo}`
+  const schedule = describeSchedule(taskData)
+  const subject = `Nueva Tarea Asignada: ${taskData.titulo}${schedule ? ` (${schedule.short})` : ''}`
 
   // Construir el enlace para añadir a Google Calendar
   let calendarButtonHtml = ''
@@ -69,7 +115,7 @@ export async function sendTaskNotificationEmail(taskData, contactData) {
         <h3 style="margin-top:0; color: #0f172a;">${escapeHtml(taskData.titulo)}</h3>
         <p style="color: #475569;">${escapeHtml(taskData.descripcion) || 'Sin descripción adicional.'}</p>
         <p><strong>Estado:</strong> ${escapeHtml(taskData.estado)}</p>
-        ${taskData.fecha_vencimiento ? `<p><strong>Vencimiento:</strong> ${escapeHtml(taskData.fecha_vencimiento)}</p>` : ''}
+        ${schedule ? `<p><strong>Cuándo:</strong> ${escapeHtml(schedule.text)}</p>` : ''}
       </div>
       ${calendarButtonHtml}
       <br><br>
