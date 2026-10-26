@@ -1,6 +1,7 @@
 import { db } from '../services/firebase/config'
 import { useAuth } from './useAuth'
 import { createCollectionStore } from './createCollectionStore'
+import { recipientKeys, pendingRecipientKeys } from '../utils/notificationRecipients'
 import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from '../services/googleCalendar'
 import { sendTaskNotificationEmail } from '../services/gmail'
 import { GoogleAuthRequiredError, describeGoogleApiError } from '../services/google/apiClient'
@@ -63,18 +64,6 @@ const { items: tasks, loading: loadingTasks, error } = createCollectionStore({
 
 export function useTasks() {
   const { user } = useAuth()
-
-  /** Claves "rol:id" de quienes deben recibir aviso según el estado de la tarea. */
-  const recipientKeys = (task) => {
-    const keys = new Set()
-    if (!task?.notificar_responsable) return keys
-    if (task.contacto_id) keys.add(`responsable:${task.contacto_id}`)
-    ;(task.contactos_copia_ids || []).forEach((id) => {
-      // Si además es el responsable, ya recibe el aviso como tal
-      if (id && id !== task.contacto_id) keys.add(`copia:${id}`)
-    })
-    return keys
-  }
 
   /**
    * Envía un correo por destinatario (responsable y copias). Nunca bloquea el
@@ -143,7 +132,7 @@ export function useTasks() {
       })
     } catch (err) {
       console.error('Error al añadir tarea:', err)
-      throw new Error(describeFirestoreError(err))
+      throw new Error(describeFirestoreError(err), { cause: err })
     }
 
     // 2) Sincronizar con Calendar como efecto secundario (no crítico).
@@ -189,7 +178,7 @@ export function useTasks() {
       await updateDoc(doc(db, 'tareas', taskId), dataToSave)
     } catch (err) {
       console.error('Error al actualizar tarea:', err)
-      throw new Error(describeFirestoreError(err))
+      throw new Error(describeFirestoreError(err), { cause: err })
     }
 
     // 2) Reflejar el cambio en Google Calendar.
@@ -247,9 +236,7 @@ export function useTasks() {
     const touchesRecipients = ['notificar_responsable', 'contacto_id', 'contactos_copia_ids']
       .some((field) => field in updates)
     if (touchesRecipients) {
-      const alreadyNotified = recipientKeys(currentTask)
-      const pending = [...recipientKeys({ ...currentTask, ...updates })]
-        .filter((key) => !alreadyNotified.has(key))
+      const pending = pendingRecipientKeys(currentTask, { ...currentTask, ...updates })
       await notifyRecipients({ ...currentTask, ...updates }, pending)
     }
   }
@@ -303,7 +290,7 @@ export function useTasks() {
       await deleteDoc(doc(db, 'tareas', taskId))
     } catch (err) {
       console.error('Error al eliminar tarea:', err)
-      throw new Error(describeFirestoreError(err))
+      throw new Error(describeFirestoreError(err), { cause: err })
     }
   }
 

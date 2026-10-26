@@ -3,7 +3,7 @@ import { googleFetch } from './google/apiClient'
 const pad = (n) => String(n).padStart(2, '0')
 
 /** Escapa texto del usuario antes de meterlo en el HTML del correo. */
-const escapeHtml = (value) => String(value ?? '')
+export const escapeHtml = (value) => String(value ?? '')
   .replace(/&/g, '&amp;')
   .replace(/</g, '&lt;')
   .replace(/>/g, '&gt;')
@@ -42,7 +42,7 @@ const shortDate = (dateStr) =>
  * evento de Calendar (inicio = fecha_inicio || fecha_vencimiento, etc.).
  * @returns {{startDate, endDate, startTime, endTime, text, short}|null}
  */
-const describeSchedule = (task) => {
+export const describeSchedule = (task) => {
   const startDate = task.fecha_inicio || task.fecha_vencimiento
   const endDate = task.fecha_vencimiento || task.fecha_inicio
   if (!startDate) return null
@@ -68,7 +68,7 @@ const describeSchedule = (task) => {
 }
 
 /** Parámetro `dates` de la plantilla de Google Calendar, coherente con el evento real. */
-const buildGcalDates = (task) => {
+export const buildGcalDates = (task) => {
   const startDate = task.fecha_inicio || task.fecha_vencimiento
   const endDate = task.fecha_vencimiento || task.fecha_inicio
   const startTime = task.hora_inicio || task.hora_vencimiento

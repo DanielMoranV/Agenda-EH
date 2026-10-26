@@ -146,8 +146,8 @@ const ganttTasks = computed(() => {
       const project = projects.value.find(p => p.id === t.proyecto_id)
 
       // Cuadrante Eisenhower
-      let quadrantName = ''
-      let quadrantClass = ''
+      let quadrantName
+      let quadrantClass
       if (t.es_urgente && t.es_importante) {
         quadrantName = 'I - Hacer (Urgente e Importante)'
         quadrantClass = 'q1-tag'

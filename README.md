@@ -168,6 +168,10 @@ Todas van en `.env.local` (ignorado por git). Los valores de Firebase están en 
 | `npm run dev` | Servidor de desarrollo con recarga en caliente |
 | `npm run build` | Compila a `dist/` |
 | `npm run preview` | Sirve localmente lo compilado |
+| `npm test` | Pruebas unitarias (Vitest) |
+| `npm run lint` | Análisis estático (ESLint) |
+
+El workflow de GitHub Actions (`.github/workflows/ci.yml`) ejecuta lint, pruebas y build en cada push y pull request.
 
 ---
 

@@ -58,8 +58,8 @@ Este plan de trabajo desglosa las 5 fases establecidas en el **Documento de Espe
 - [x] **6.4c Indicadores ampliados:** tareas vencidas, comparativa con el mes anterior, tendencia de 6 meses, agrupación por proyecto o responsable, distribución por cuadrante, cumplimiento a tiempo (campo `finalizado_at`, solo desde que existe), aviso de tareas sin fecha y exportación CSV / impresión.
 - [x] **6.5 Temas claro/oscuro** y sistema de notificaciones (toasts).
 - [x] **6.6 Revisión de código (oct. 2026):** Regla de Firestore con `user_id` inmutable, fin exclusivo de eventos de día completo, un solo listener por colección, borrado de proyecto/contacto que desvincula sus tareas, validación del formulario y renovación de token sin bloqueos.
-- [ ] **6.7 Pruebas automatizadas:** Cubrir al menos `buildEventPayload`, `matchesFilters` y la lógica de `updateTask`.
-- [ ] **6.8 Linter y CI:** No hay ESLint ni verificación automática en cada push.
+- [x] **6.7 Pruebas automatizadas:** Vitest (`npm test`, 38 pruebas) sobre `matchesFilters`, `buildEventPayload`, el texto de fecha/hora del correo y los destinatarios de aviso. Pendiente: pruebas de las vistas y de Indicadores.
+- [x] **6.8 Linter y CI:** ESLint (`npm run lint`) y un workflow de GitHub Actions (`.github/workflows/ci.yml`) que corre lint, pruebas y build en cada push y pull request.
 - [ ] **6.9 Carga diferida por ruta:** El bundle supera 500 kB (Firebase + FullCalendar).
 - [ ] **6.10 Token de Google fuera de `localStorage`:** Hoy queda expuesto ante XSS; evaluar `sessionStorage` o solo memoria (afecta a la sincronización entre pestañas).
 - [ ] **6.11 Aviso al crear una tarea fuera del periodo filtrado:** Hoy desaparece de la vista sin explicación.
